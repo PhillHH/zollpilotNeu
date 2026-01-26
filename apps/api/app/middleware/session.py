@@ -12,6 +12,14 @@ from app.core.security import hash_session_token
 from app.db.prisma_client import prisma
 
 
+def _make_aware(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware (UTC)."""
+    if dt.tzinfo is None:
+        # Assume naive datetime is UTC
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 class SessionMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: Callable, *, secret: str, cookie_name: str) -> None:
         super().__init__(app)
@@ -27,13 +35,18 @@ class SessionMiddleware(BaseHTTPMiddleware):
             token_hash = hash_session_token(token, self._secret)
             session = await prisma.session.find_unique(where={"token_hash": token_hash})
 
-            if session and session.expires_at <= datetime.now(timezone.utc):
-                await prisma.session.delete(where={"token_hash": token_hash})
-                session = None
-
             if session:
-                request.state.session = session
-                request.state.session_token_hash = token_hash
+                # Make expires_at timezone-aware for comparison
+                expires_at = _make_aware(session.expires_at)
+                now = datetime.now(timezone.utc)
+
+                if expires_at <= now:
+                    # Session expired, delete it
+                    await prisma.session.delete(where={"token_hash": token_hash})
+                    session = None
+                else:
+                    request.state.session = session
+                    request.state.session_token_hash = token_hash
 
         response = await call_next(request)
         return response
