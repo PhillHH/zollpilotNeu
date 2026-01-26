@@ -4,7 +4,7 @@ import base64
 import hashlib
 import hmac
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import bcrypt
 
@@ -34,5 +34,6 @@ def hash_session_token(token: str, secret: str) -> str:
 
 
 def compute_expiry(minutes: int) -> datetime:
-    return datetime.utcnow() + timedelta(minutes=minutes)
+    """Compute session expiry time as timezone-aware UTC datetime."""
+    return datetime.now(timezone.utc) + timedelta(minutes=minutes)
 
