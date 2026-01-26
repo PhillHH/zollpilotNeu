@@ -134,8 +134,10 @@ class CreditsBalanceResponse(BaseModel):
 
 
 # --- Admin dependency ---
+# Admin endpoints require SYSTEM_ADMIN role (ZollPilot internal)
+# Tenant admins (ADMIN role) do NOT have access to system-wide admin functions
 
-get_admin_context = require_role(Role.ADMIN)
+get_admin_context = require_role(Role.SYSTEM_ADMIN)
 
 
 # --- Plan Endpoints ---

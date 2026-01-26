@@ -56,9 +56,10 @@ model Session {
 }
 
 enum Role {
-  OWNER
-  ADMIN
-  USER
+  SYSTEM_ADMIN  // ZollPilot internal: full system access
+  OWNER         // Tenant owner: full tenant access
+  ADMIN         // Tenant admin: administrative tenant access
+  USER          // Standard user: limited access
 }
 
 model Case {

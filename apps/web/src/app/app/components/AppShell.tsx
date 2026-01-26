@@ -2,20 +2,48 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { PageShell } from "../../design-system/primitives/PageShell";
 
 type AppShellProps = {
   children: React.ReactNode;
 };
 
+type AuthInfo = {
+  canAccessAdmin: boolean;
+};
+
 /**
  * AppShell – Layout für den App-Bereich (/app/*)
- * 
+ *
  * Verwendet das ZollPilot Design System v1.
  * Header mit Navigation, Footer mit Links.
+ * Shows admin link only for SYSTEM_ADMIN users.
  */
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
+  const [auth, setAuth] = useState<AuthInfo | null>(null);
+
+  useEffect(() => {
+    async function loadAuth() {
+      try {
+        const res = await fetch(
+          (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000") +
+            "/auth/me",
+          { credentials: "include", headers: { "X-Contract-Version": "1" } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setAuth({
+            canAccessAdmin: data.data?.permissions?.can_access_admin ?? false,
+          });
+        }
+      } catch {
+        // Ignore errors - admin link just won't show
+      }
+    }
+    loadAuth();
+  }, []);
 
   const isActive = (path: string) => {
     if (path === "/app") return pathname === "/app";
@@ -24,7 +52,12 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <PageShell
-      header={<AppHeader isActive={isActive} />}
+      header={
+        <AppHeader
+          isActive={isActive}
+          canAccessAdmin={auth?.canAccessAdmin ?? false}
+        />
+      }
       footer={<AppFooter />}
     >
       {children}
@@ -33,7 +66,13 @@ export function AppShell({ children }: AppShellProps) {
 }
 
 /** App Header mit Navigation */
-function AppHeader({ isActive }: { isActive: (path: string) => boolean }) {
+function AppHeader({
+  isActive,
+  canAccessAdmin,
+}: {
+  isActive: (path: string) => boolean;
+  canAccessAdmin: boolean;
+}) {
   return (
     <header className="app-header">
       <div className="header-container">
@@ -67,6 +106,11 @@ function AppHeader({ isActive }: { isActive: (path: string) => boolean }) {
 
         {/* User Actions */}
         <div className="header-actions">
+          {canAccessAdmin && (
+            <Link href="/admin" className="admin-link">
+              Admin
+            </Link>
+          )}
           <Link href="/api/auth/logout" className="logout-link">
             Abmelden
           </Link>
@@ -120,8 +164,9 @@ function AppHeader({ isActive }: { isActive: (path: string) => boolean }) {
           color: var(--color-text-muted);
           text-decoration: none;
           border-radius: var(--radius-md);
-          transition: color var(--transition-fast),
-                      background var(--transition-fast);
+          transition:
+            color var(--transition-fast),
+            background var(--transition-fast);
         }
 
         .app-header :global(.nav-link):hover {
@@ -138,6 +183,24 @@ function AppHeader({ isActive }: { isActive: (path: string) => boolean }) {
           display: flex;
           align-items: center;
           gap: var(--space-md);
+        }
+
+        .app-header :global(.admin-link) {
+          font-size: var(--text-sm);
+          font-weight: var(--font-medium);
+          color: var(--color-primary);
+          text-decoration: none;
+          padding: var(--space-xs) var(--space-sm);
+          border: 1px solid var(--color-primary);
+          border-radius: var(--radius-md);
+          transition:
+            color var(--transition-fast),
+            background var(--transition-fast);
+        }
+
+        .app-header :global(.admin-link):hover {
+          color: var(--color-text-on-primary);
+          background: var(--color-primary);
         }
 
         .app-header :global(.logout-link) {
@@ -177,7 +240,8 @@ function AppFooter() {
       <div className="footer-container">
         <div className="footer-content">
           <p className="footer-disclaimer">
-            ZollPilot übermittelt keine Daten an Zollbehörden und führt keine Zollanmeldungen durch.
+            ZollPilot übermittelt keine Daten an Zollbehörden und führt keine
+            Zollanmeldungen durch.
           </p>
           <p className="footer-copyright">
             © {new Date().getFullYear()} ZollPilot
@@ -253,4 +317,3 @@ function AppFooter() {
     </footer>
   );
 }
-

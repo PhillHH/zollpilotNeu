@@ -235,7 +235,20 @@ Alle App-Komponenten nutzen die Design-System-Primitives:
 ## RBAC
 
 - RBAC is enforced exclusively in the backend.
-- Role order is explicit: OWNER > ADMIN > USER.
+- Role hierarchy: `SYSTEM_ADMIN > OWNER > ADMIN > USER`
+- **SYSTEM_ADMIN**: ZollPilot internal, full system access (plans, all tenants)
+- **OWNER/ADMIN/USER**: Tenant-scoped access only
+
+### User vs. Admin Separation
+
+| Context | Routes | Roles |
+|---------|--------|-------|
+| User | `/app/*` | All authenticated users |
+| Admin | `/admin/*` | SYSTEM_ADMIN only |
+
+Admin endpoints return 403 (not 401) for authenticated non-admin users.
+
+See `docs/AUTH.md` for complete role documentation.
 
 ## API Contracts
 

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
 from app.core.config import Settings, get_settings
-from app.core.rbac import Role, role_at_least
+from app.core.rbac import Role, is_system_admin
 from app.core.security import (
     compute_expiry,
     generate_session_token,
@@ -28,7 +28,7 @@ class Credentials(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     password: str
-    demo_admin: bool = False  # Demo only: register as ADMIN instead of OWNER
+    demo_admin: bool = False  # Demo only: register as SYSTEM_ADMIN instead of OWNER
 
 
 class UserResponse(BaseModel):
@@ -67,7 +67,13 @@ class StatusResponse(BaseModel):
 
 
 def _build_permissions(role: Role) -> PermissionsResponse:
-    return PermissionsResponse(can_access_admin=role_at_least(role, Role.ADMIN))
+    """
+    Build permissions based on role.
+
+    Admin access requires SYSTEM_ADMIN role (ZollPilot internal).
+    Tenant admins (ADMIN, OWNER) do NOT have system admin access.
+    """
+    return PermissionsResponse(can_access_admin=is_system_admin(role))
 
 
 async def _create_session(user_id: str, settings: Settings) -> tuple[str, datetime]:
@@ -120,8 +126,8 @@ async def register(payload: RegisterRequest, response: Response) -> AuthMeRespon
     )
     tenant = await prisma.tenant.create(data={"name": "Default"})
 
-    # Demo: Allow registering as ADMIN for testing purposes
-    role_value = Role.ADMIN.value if payload.demo_admin else Role.OWNER.value
+    # Demo: Allow registering as SYSTEM_ADMIN for testing purposes
+    role_value = Role.SYSTEM_ADMIN.value if payload.demo_admin else Role.OWNER.value
 
     membership = await prisma.membership.create(
         data={"user_id": user.id, "tenant_id": tenant.id, "role": role_value}
@@ -193,6 +199,7 @@ async def me(context: AuthContext = Depends(get_current_user)) -> AuthMeResponse
 
 
 @router.get("/admin", response_model=StatusResponse)
-async def admin(context: AuthContext = Depends(require_role(Role.ADMIN))) -> StatusResponse:
+async def admin(context: AuthContext = Depends(require_role(Role.SYSTEM_ADMIN))) -> StatusResponse:
+    """Check if current user has SYSTEM_ADMIN access."""
     return StatusResponse(data=StatusData(status="ok"))
 

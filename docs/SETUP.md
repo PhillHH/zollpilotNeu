@@ -289,13 +289,38 @@ For enterprise/scale deployments:
 
 ## Admin Flow
 
-The first registered user becomes OWNER and has admin access:
+**Important:** Admin access requires `SYSTEM_ADMIN` role. Regular users (OWNER, ADMIN, USER) do NOT have admin access.
 
-1. Navigate to `/admin`
-2. Manage plans at `/admin/plans`
-3. Manage tenants and credits at `/admin/tenants`
+### Creating a Demo Admin (Development Only)
 
-See `docs/ADMIN_MANUAL.md` for detailed admin instructions.
+```bash
+# Register with demo_admin flag
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -H "X-Contract-Version: 1" \
+  -d '{"email": "admin@example.com", "password": "secret", "demo_admin": true}'
+```
+
+**WARNING:** Disable `demo_admin` option before production deployment!
+
+### Admin Navigation
+
+1. Login as SYSTEM_ADMIN user
+2. "Admin" link appears in the header
+3. Navigate to `/admin`
+4. Manage plans at `/admin/plans`
+5. Manage tenants and credits at `/admin/tenants`
+
+### Role Hierarchy
+
+| Role | Access |
+|------|--------|
+| SYSTEM_ADMIN | Full system access (plans, all tenants) |
+| OWNER | Tenant owner (no admin access) |
+| ADMIN | Tenant admin (no admin access) |
+| USER | Standard user (no admin access) |
+
+See `docs/AUTH.md` for complete role documentation.
 
 ## Database Migrations
 
