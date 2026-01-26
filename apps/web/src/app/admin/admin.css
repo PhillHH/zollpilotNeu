@@ -1,0 +1,64 @@
+.admin-header {
+  margin-bottom: var(--space-2xl);
+}
+
+.admin-title {
+  font-size: var(--heading-h1);
+  color: var(--color-text);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.admin-subtitle {
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+.admin-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.admin-card {
+  transition: border-color var(--transition-fast),
+              transform var(--transition-fast) !important;
+  height: 100%;
+}
+
+.admin-card:hover {
+  border-color: var(--color-primary) !important;
+  transform: translateY(-2px);
+}
+
+.admin-card-icon {
+  font-size: 2rem;
+  margin-bottom: var(--space-md);
+}
+
+.admin-card-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.admin-card-description {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

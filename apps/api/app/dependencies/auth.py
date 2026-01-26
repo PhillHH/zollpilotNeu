@@ -22,22 +22,22 @@ async def get_current_user(request: Request) -> AuthContext:
     if not session:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="not_authenticated")
 
-    user = await prisma.user.find_unique(where={"id": session["user_id"]})
+    user = await prisma.user.find_unique(where={"id": session.user_id})
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="not_authenticated")
 
-    membership = await prisma.membership.find_first(where={"user_id": user["id"]})
+    membership = await prisma.membership.find_first(where={"user_id": user.id})
     if not membership:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="no_membership")
 
-    tenant = await prisma.tenant.find_unique(where={"id": membership["tenant_id"]})
+    tenant = await prisma.tenant.find_unique(where={"id": membership.tenant_id})
     if not tenant:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="no_tenant")
 
     return AuthContext(
-        user=user,
-        tenant=tenant,
-        role=Role(membership["role"]),
+        user=user.model_dump(),
+        tenant=tenant.model_dump(),
+        role=Role(membership.role),
         session_token_hash=request.state.session_token_hash,
     )
 

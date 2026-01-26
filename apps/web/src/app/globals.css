@@ -1,0 +1,272 @@
+/**
+ * =============================================================================
+ * ZollPilot – Global Styles
+ * =============================================================================
+ * 
+ * Diese Datei importiert das Design System und definiert zusätzliche
+ * anwendungsspezifische Stile.
+ * 
+ * REIHENFOLGE:
+ * 1. Design Tokens (CSS Variablen)
+ * 2. Base Styles (Reset, Typography)
+ * 3. Anwendungsspezifische Stile
+ */
+
+/* Design System Imports */
+@import './design-system/tokens.css';
+@import './design-system/base.css';
+
+/* =============================================================================
+ * AUTH PAGES
+ * ============================================================================= */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  background: var(--color-bg);
+}
+
+.auth-page h1 {
+  font-size: var(--heading-h1);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-xl);
+  color: var(--color-text);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"],
+.auth-form input[type="text"] {
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-base);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), 
+              box-shadow var(--transition-fast);
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.auth-form .checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.auth-form input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.auth-form button[type="submit"] {
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), 
+              transform var(--transition-fast);
+}
+
+.auth-form button[type="submit"]:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.auth-form button[type="submit"]:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.auth-form button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-form .error-message {
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+}
+
+.auth-link {
+  margin-top: var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.auth-link a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
+}
+
+/* =============================================================================
+ * MDX CONTENT STYLES
+ * ============================================================================= */
+
+.mdx-content {
+  color: var(--color-text);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+}
+
+.mdx-content h1 {
+  font-size: var(--heading-h1);
+  margin: var(--space-xl) 0 var(--space-md) 0;
+  color: var(--color-text);
+  line-height: var(--leading-tight);
+}
+
+.mdx-content h2 {
+  font-size: var(--heading-h2);
+  margin: var(--space-xl) 0 var(--space-md) 0;
+  color: var(--color-text);
+  line-height: var(--leading-tight);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.mdx-content h3 {
+  font-size: var(--heading-h3);
+  margin: var(--space-lg) 0 var(--space-sm) 0;
+  color: var(--color-text);
+}
+
+.mdx-content p {
+  margin: var(--space-md) 0;
+}
+
+.mdx-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.mdx-content a:hover {
+  text-decoration: underline;
+}
+
+.mdx-content ul,
+.mdx-content ol {
+  margin: var(--space-md) 0;
+  padding-left: var(--space-lg);
+}
+
+.mdx-content li {
+  margin: var(--space-sm) 0;
+}
+
+.mdx-content blockquote {
+  margin: var(--space-lg) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 4px solid var(--color-primary);
+  background: var(--color-primary-softer);
+  font-style: italic;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.mdx-content blockquote p {
+  margin: var(--space-sm) 0;
+}
+
+.mdx-content code {
+  background: var(--color-primary-softer);
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.mdx-content pre {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  overflow-x: auto;
+  margin: var(--space-lg) 0;
+}
+
+.mdx-content pre code {
+  background: none;
+  padding: 0;
+  font-size: var(--text-sm);
+}
+
+.mdx-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-lg) 0;
+}
+
+.mdx-content th,
+.mdx-content td {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.mdx-content th {
+  background: var(--color-border-light);
+  font-weight: var(--font-semibold);
+}
+
+.mdx-content hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-xl) 0;
+}
+
+.mdx-content strong {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.mdx-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}

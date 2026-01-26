@@ -1,0 +1,51 @@
+.legal-page-title {
+  font-size: var(--heading-h1);
+  color: var(--color-text);
+  margin: 0 0 var(--space-xl) 0;
+}
+
+.legal-content h2 {
+  font-size: var(--heading-h2);
+  color: var(--color-text);
+  margin: var(--space-2xl) 0 var(--space-md) 0;
+}
+
+.legal-content h2:first-of-type {
+  margin-top: 0;
+}
+
+.legal-content h3 {
+  font-size: var(--heading-h4);
+  color: var(--color-text);
+  margin: var(--space-lg) 0 var(--space-sm) 0;
+}
+
+.legal-content p {
+  color: var(--color-text-muted);
+  line-height: var(--leading-relaxed);
+  margin: 0 0 var(--space-md) 0;
+}
+
+.legal-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.legal-content a:hover {
+  text-decoration: underline;
+}
+
+.legal-note {
+  margin-top: var(--space-2xl);
+  padding: var(--space-md);
+  background: var(--color-warning-soft);
+  border-radius: var(--radius-md);
+  color: var(--color-warning);
+}
+
+/* Impressum specific overrides */
+.legal-content--impressum h2 {
+  font-size: var(--heading-h3);
+  margin: var(--space-xl) 0 var(--space-md) 0;
+}
+

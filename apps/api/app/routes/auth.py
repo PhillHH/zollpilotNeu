@@ -25,6 +25,12 @@ class Credentials(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    demo_admin: bool = False  # Demo only: register as ADMIN instead of OWNER
+
+
 class UserResponse(BaseModel):
     id: str
     email: str
@@ -97,31 +103,38 @@ def _clear_session_cookie(response: Response, settings: Settings) -> None:
 
 
 @router.post("/register", response_model=AuthMeResponse, status_code=status.HTTP_201_CREATED)
-async def register(credentials: Credentials, response: Response) -> AuthMeResponse:
+async def register(payload: RegisterRequest, response: Response) -> AuthMeResponse:
     settings = get_settings()
-    existing = await prisma.user.find_unique(where={"email": credentials.email})
+    existing = await prisma.user.find_unique(where={"email": payload.email})
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="email_in_use")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "EMAIL_IN_USE", "message": "E-Mail ist bereits registriert."},
+        )
 
     user = await prisma.user.create(
         data={
-            "email": credentials.email,
-            "password_hash": hash_password(credentials.password),
+            "email": payload.email,
+            "password_hash": hash_password(payload.password),
         }
     )
     tenant = await prisma.tenant.create(data={"name": "Default"})
+
+    # Demo: Allow registering as ADMIN for testing purposes
+    role_value = Role.ADMIN.value if payload.demo_admin else Role.OWNER.value
+
     membership = await prisma.membership.create(
-        data={"user_id": user["id"], "tenant_id": tenant["id"], "role": Role.OWNER.value}
+        data={"user_id": user.id, "tenant_id": tenant.id, "role": role_value}
     )
 
-    token, _ = await _create_session(user["id"], settings)
+    token, _ = await _create_session(user.id, settings)
     _set_session_cookie(response, token, settings)
 
-    role = Role(membership["role"])
+    role = Role(membership.role)
     return AuthMeResponse(
         data=AuthMeData(
-            user=UserResponse(**user),
-            tenant=TenantResponse(**tenant),
+            user=UserResponse(id=user.id, email=user.email, created_at=user.created_at),
+            tenant=TenantResponse(id=tenant.id, name=tenant.name, created_at=tenant.created_at),
             role=role,
             permissions=_build_permissions(role),
         )
@@ -132,25 +145,25 @@ async def register(credentials: Credentials, response: Response) -> AuthMeRespon
 async def login(credentials: Credentials, response: Response) -> AuthMeResponse:
     settings = get_settings()
     user = await prisma.user.find_unique(where={"email": credentials.email})
-    if not user or not verify_password(credentials.password, user["password_hash"]):
+    if not user or not verify_password(credentials.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
 
-    membership = await prisma.membership.find_first(where={"user_id": user["id"]})
+    membership = await prisma.membership.find_first(where={"user_id": user.id})
     if not membership:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="no_membership")
 
-    tenant = await prisma.tenant.find_unique(where={"id": membership["tenant_id"]})
+    tenant = await prisma.tenant.find_unique(where={"id": membership.tenant_id})
     if not tenant:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="no_tenant")
 
-    token, _ = await _create_session(user["id"], settings)
+    token, _ = await _create_session(user.id, settings)
     _set_session_cookie(response, token, settings)
 
-    role = Role(membership["role"])
+    role = Role(membership.role)
     return AuthMeResponse(
         data=AuthMeData(
-            user=UserResponse(**user),
-            tenant=TenantResponse(**tenant),
+            user=UserResponse(id=user.id, email=user.email, created_at=user.created_at),
+            tenant=TenantResponse(id=tenant.id, name=tenant.name, created_at=tenant.created_at),
             role=role,
             permissions=_build_permissions(role),
         )

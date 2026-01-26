@@ -5,9 +5,9 @@ set -e
 echo "Generating Prisma client..."
 prisma generate --schema /app/prisma/schema.prisma
 
-# Run migrations (optional, can be commented out if manual migration is preferred)
-# echo "Running database migrations..."
-# prisma migrate deploy --schema /app/prisma/schema.prisma
+# Run migrations
+echo "Running database migrations..."
+prisma migrate deploy --schema /app/prisma/schema.prisma
 
 # Start the application
 echo "Starting API server..."

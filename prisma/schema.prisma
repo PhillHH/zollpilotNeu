@@ -8,21 +8,30 @@ datasource db {
 }
 
 model User {
-  id            String      @id @default(uuid())
-  email         String      @unique
-  password_hash String
-  created_at    DateTime    @default(now())
-  memberships   Membership[]
-  sessions      Session[]
-  created_cases Case[]
+  id             String              @id @default(uuid())
+  email          String              @unique
+  password_hash  String
+  created_at     DateTime            @default(now())
+  memberships    Membership[]
+  sessions       Session[]
+  created_cases  Case[]
+  credit_entries CreditLedgerEntry[]
 }
 
 model Tenant {
-  id          String       @id @default(uuid())
-  name        String
-  created_at  DateTime     @default(now())
-  memberships Membership[]
-  cases       Case[]
+  id                String       @id @default(uuid())
+  name              String
+  created_at        DateTime     @default(now())
+  plan_id           String?
+  plan_activated_at DateTime?
+  memberships       Membership[]
+  cases             Case[]
+  credit_balance    TenantCreditBalance?
+  credit_ledger     CreditLedgerEntry[]
+
+  plan Plan? @relation(fields: [plan_id], references: [id])
+
+  @@index([plan_id])
 }
 
 model Membership {
@@ -53,21 +62,165 @@ enum Role {
 }
 
 model Case {
-  id                  String     @id @default(uuid())
+  id                  String      @id @default(uuid())
   tenant_id           String
   created_by_user_id  String
   title               String
   status              CaseStatus
-  created_at          DateTime   @default(now())
-  updated_at          DateTime   @updatedAt
+  version             Int         @default(1)
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+  submitted_at        DateTime?
+  archived_at         DateTime?
+  procedure_id        String?
+  procedure_version   String?
 
-  tenant     Tenant   @relation(fields: [tenant_id], references: [id])
-  created_by User     @relation(fields: [created_by_user_id], references: [id])
+  tenant     Tenant         @relation(fields: [tenant_id], references: [id])
+  created_by User           @relation(fields: [created_by_user_id], references: [id])
+  fields     CaseField[]
+  procedure  Procedure?     @relation(fields: [procedure_id], references: [id])
+  snapshots  CaseSnapshot[]
+
+  @@index([tenant_id])
+  @@index([procedure_id])
+}
+
+model CaseField {
+  id         String   @id @default(uuid())
+  case_id    String
+  key        String
+  value_json Json
+  value_text String?
+  updated_at DateTime @updatedAt
+
+  case Case @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  @@unique([case_id, key])
+  @@index([case_id])
+  @@index([key])
 }
 
 enum CaseStatus {
   DRAFT
   SUBMITTED
   ARCHIVED
+}
+
+model CaseSnapshot {
+  id                String   @id @default(uuid())
+  case_id           String
+  version           Int
+  procedure_code    String
+  procedure_version String
+  fields_json       Json
+  validation_json   Json
+  created_at        DateTime @default(now())
+
+  case Case @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  @@unique([case_id, version])
+  @@index([case_id])
+}
+
+// --- Procedure Models ---
+
+model Procedure {
+  id         String          @id @default(uuid())
+  code       String
+  name       String
+  version    String          @default("v1")
+  is_active  Boolean         @default(true)
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+  steps      ProcedureStep[]
+  cases      Case[]
+
+  @@unique([code, version])
+  @@index([code])
+}
+
+model ProcedureStep {
+  id           String           @id @default(uuid())
+  procedure_id String
+  step_key     String
+  title        String
+  order        Int
+  is_active    Boolean          @default(true)
+  fields       ProcedureField[]
+
+  procedure Procedure @relation(fields: [procedure_id], references: [id], onDelete: Cascade)
+
+  @@unique([procedure_id, step_key])
+  @@index([procedure_id])
+}
+
+model ProcedureField {
+  id                String        @id @default(uuid())
+  procedure_step_id String
+  field_key         String
+  field_type        FieldType
+  required          Boolean       @default(false)
+  config_json       Json?
+  order             Int
+
+  step ProcedureStep @relation(fields: [procedure_step_id], references: [id], onDelete: Cascade)
+
+  @@unique([procedure_step_id, field_key])
+  @@index([procedure_step_id])
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  SELECT
+  COUNTRY
+  CURRENCY
+  BOOLEAN
+}
+
+// --- Billing Models ---
+
+model Plan {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  name        String
+  is_active   Boolean      @default(true)
+  price_cents Int?
+  currency    String       @default("EUR")
+  interval    PlanInterval @default(NONE)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+  tenants     Tenant[]
+}
+
+enum PlanInterval {
+  ONE_TIME
+  YEARLY
+  MONTHLY
+  NONE
+}
+
+model TenantCreditBalance {
+  tenant_id  String   @id
+  balance    Int      @default(0)
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+}
+
+model CreditLedgerEntry {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  delta              Int
+  reason             String
+  metadata_json      Json?
+  created_by_user_id String?
+  created_at         DateTime @default(now())
+
+  tenant     Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  created_by User?  @relation(fields: [created_by_user_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([created_at])
 }
 
