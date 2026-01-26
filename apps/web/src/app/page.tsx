@@ -9,11 +9,11 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "ZollPilot – Zollanmeldung einfach gemacht",
   description:
-    "ZollPilot hilft Ihnen, Ihre Zollanmeldung für Internetbestellungen aus dem Ausland schnell und einfach zu erledigen. Schritt für Schritt durch den Prozess.",
+    "Spare 6–15 € pro Sendung: ZollPilot bereitet deine Zollanmeldung vor – du reichst sie selbst ein. Schnell, einfach, ohne Servicegebühren.",
   openGraph: {
     title: "ZollPilot – Zollanmeldung einfach gemacht",
     description:
-      "Zollanmeldung für Internetbestellungen. Einfach, schnell und rechtssicher.",
+      "Spare 6–15 € pro Sendung. Zollanmeldung selbst vorbereiten statt teuer bezahlen.",
     type: "website",
   },
 };
@@ -21,19 +21,10 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <PublicLayout>
-      {/* Hero Section */}
       <HeroSection />
-
-      {/* Problem/Nutzen Section */}
-      <FeaturesSection />
-
-      {/* So funktioniert's */}
+      <PdfGuideSection />
+      <ComparisonSection />
       <HowItWorksSection />
-
-      {/* Vertrauen */}
-      <TrustSection />
-
-      {/* Final CTA */}
       <CtaSection />
     </PublicLayout>
   );
@@ -44,64 +35,97 @@ function HeroSection() {
   return (
     <Section maxWidth="lg" padding="xl" className={styles.hero}>
       <div className={styles.heroContent}>
+        <div className={styles.heroBadge}>Keine Servicegebühren mehr</div>
         <h1 className={styles.heroTitle}>
-          Spare dir 6–15 € Verzollungsgebühren
+          Zollanmeldung vorbereiten.
           <br />
-          <span className={styles.heroTitleAccent}>– bereite deine Zollanmeldung selbst vor.</span>
+          <span className={styles.heroTitleAccent}>6–15 € sparen.</span>
         </h1>
         <p className={styles.heroSubtitle}>
-          ZollPilot führt dich Schritt für Schritt durch die <strong>Vorbereitung</strong> und zeigt dir genau,
-          wo du was eintragen musst.
+          Dein Paket aus dem Ausland hängt beim Zoll? ZollPilot zeigt dir in 5 Minuten,
+          wie du die Anmeldung selbst vorbereitest – ohne teure Paketdienst-Gebühren.
         </p>
         <div className={styles.heroActions}>
           <Link href="/register">
             <Button variant="primary" size="lg">
-              Zollanmeldung vorbereiten
+              Jetzt starten – kostenlos
             </Button>
           </Link>
-          <Link href="/faq">
-            <Button variant="secondary" size="lg">
-              Mehr erfahren
-            </Button>
-          </Link>
+        </div>
+        <div className={styles.heroTrust}>
+          <span>✓ Kostenlose Registrierung</span>
+          <span>✓ Daten in Deutschland</span>
+          <span>✓ Kein Abo</span>
         </div>
       </div>
     </Section>
   );
 }
 
-/** Comparison – Paketdienst vs. ZollPilot */
-function FeaturesSection() {
+/** PDF Guide Teaser */
+function PdfGuideSection() {
   return (
-    <Section maxWidth="xl" padding="xl" className={styles.features}>
-      <div className={styles.featuresHeader}>
-        <h2 className={styles.featuresTitle}>Warum selbst vorbereiten statt bezahlen?</h2>
-        <p className={styles.featuresSubtitle}>
-          Holen Sie sich die Kontrolle zurück.
-        </p>
-      </div>
+    <Section maxWidth="lg" padding="lg" className={styles.pdfSection}>
+      <Card padding="lg" className={styles.pdfCard}>
+        <div className={styles.pdfContent}>
+          <div className={styles.pdfIcon}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+          </div>
+          <div className={styles.pdfText}>
+            <h3 className={styles.pdfTitle}>Zoll-Leitfaden als PDF</h3>
+            <p className={styles.pdfDescription}>
+              Alles Wichtige zur Selbstverzollung auf einen Blick: Formulare, Fristen, Freigrenzen.
+              Direkt nach der Registrierung im Dashboard verfügbar.
+            </p>
+          </div>
+          <div className={styles.pdfAction}>
+            <Link href="/register">
+              <Button variant="secondary" size="md">
+                PDF freischalten
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Card>
+    </Section>
+  );
+}
 
-      <div className={styles.featuresGrid}>
-        {/* Paketdienst */}
-        <Card padding="lg" className={styles.featureCard}>
-          <div className={styles.featureIcon}>📦</div>
-          <h3 className={styles.featureTitle}>Paketdienst</h3>
-          <p className={styles.featureDescription}>
-            ❌ <strong>6–15 € Servicegebühr</strong> pro Sendung<br />
-            ❌ Keine Wiederverwendung von Daten<br />
-            ❌ Oft intransparente Abwicklung
-          </p>
+/** Comparison – Paketdienst vs. ZollPilot */
+function ComparisonSection() {
+  return (
+    <Section maxWidth="lg" padding="xl" className={styles.comparison}>
+      <h2 className={styles.sectionTitle}>Paketdienst vs. Selbst machen</h2>
+
+      <div className={styles.comparisonGrid}>
+        <Card padding="lg" className={styles.comparisonCard}>
+          <div className={styles.comparisonHeader}>
+            <span className={styles.comparisonIcon}>📦</span>
+            <h3>Paketdienst</h3>
+          </div>
+          <ul className={styles.comparisonList}>
+            <li className={styles.comparisonNegative}>6–15 € Gebühr pro Sendung</li>
+            <li className={styles.comparisonNegative}>Wartezeit bis zur Bearbeitung</li>
+            <li className={styles.comparisonNegative}>Keine Kontrolle über den Prozess</li>
+          </ul>
         </Card>
 
-        {/* ZollPilot */}
-        <Card padding="lg" className={styles.featureCard} style={{ borderColor: 'var(--color-primary)' }}>
-          <div className={styles.featureIcon}>🚀</div>
-          <h3 className={styles.featureTitle}>ZollPilot</h3>
-          <p className={styles.featureDescription}>
-            ✅ <strong>Kostenersparnis</strong> bei jeder Sendung<br />
-            ✅ Einmal erfassen, immer wiederverwenden<br />
-            ✅ Volle Kontrolle über Ihre Daten
-          </p>
+        <Card padding="lg" className={`${styles.comparisonCard} ${styles.comparisonHighlight}`}>
+          <div className={styles.comparisonHeader}>
+            <span className={styles.comparisonIcon}>✨</span>
+            <h3>Mit ZollPilot</h3>
+          </div>
+          <ul className={styles.comparisonList}>
+            <li className={styles.comparisonPositive}>Einmalig günstig, dann kostenlos</li>
+            <li className={styles.comparisonPositive}>In 5 Minuten fertig vorbereitet</li>
+            <li className={styles.comparisonPositive}>Daten für nächstes Mal gespeichert</li>
+          </ul>
         </Card>
       </div>
     </Section>
@@ -113,73 +137,39 @@ function HowItWorksSection() {
   const steps = [
     {
       number: "1",
-      title: "Fragen beantworten",
-      description: "Unser Wizard führt dich durch alle notwendigen Angaben zur Sendung.",
+      title: "Daten eingeben",
+      description: "Beantworte ein paar einfache Fragen zu deiner Sendung.",
     },
     {
       number: "2",
-      title: "Werte kopieren & eintragen",
-      description:
-        "Nutze unsere Ausfüllhilfe, um die Daten in das offizielle Zollformular zu übertragen.",
+      title: "Ausfüllhilfe nutzen",
+      description: "Übertrage die Werte ins offizielle Zollformular.",
     },
     {
       number: "3",
-      title: "Fertig",
-      description:
-        "Reiche die Anmeldung selbst beim Zoll ein und spare die Servicegebühr.",
+      title: "Selbst einreichen",
+      description: "Fertig – du sparst die Servicegebühr.",
     },
   ];
 
   return (
-    <Section maxWidth="lg" padding="xl">
-      <div className={styles.howItWorksHeader}>
-        <h2 className={styles.howItWorksTitle}>So funktioniert&apos;s</h2>
-        <p className={styles.howItWorksSubtitle}>
-          Einfach vorbereiten, selbst einreichen.
-        </p>
-      </div>
+    <Section maxWidth="lg" padding="xl" className={styles.howItWorks}>
+      <h2 className={styles.sectionTitle}>In 3 Schritten zum Ziel</h2>
 
       <div className={styles.steps}>
         {steps.map((step, index) => (
           <div key={step.number} className={styles.step}>
             <div className={styles.stepNumber}>{step.number}</div>
-            <div>
-              <h3 className={styles.stepTitle}>{step.title}</h3>
-              <p className={styles.stepDescription}>{step.description}</p>
-            </div>
+            <h3 className={styles.stepTitle}>{step.title}</h3>
+            <p className={styles.stepDescription}>{step.description}</p>
             {index < steps.length - 1 && <div className={styles.stepConnector} />}
           </div>
         ))}
       </div>
 
-      <div style={{ textAlign: "center", marginTop: "var(--space-lg)", color: "var(--color-text-muted)" }}>
-        <small>Hinweis: ZollPilot übermittelt keine Daten an Zollbehörden.</small>
-      </div>
-    </Section>
-  );
-}
-
-/** Trust Section */
-function TrustSection() {
-  return (
-    <Section maxWidth="md" padding="xl" className={styles.trust}>
-      <div className={styles.trustContent}>
-        <h2 className={styles.trustTitle}>Vertrauen Sie auf ZollPilot</h2>
-        <div className={styles.trustPoints}>
-          <p>
-            <strong>Rechtssicher:</strong> Unsere Übersichten orientieren sich an den gängigen
-            Zollformularen und zeigen, wo welche Angaben einzutragen sind.
-          </p>
-          <p>
-            <strong>Datenschutz:</strong> Ihre Daten werden ausschließlich in Deutschland
-            gespeichert und niemals an Dritte weitergegeben.
-          </p>
-          <p>
-            <strong>Transparent:</strong> Keine versteckten Kosten, keine Abonnements.
-            Sie zahlen nur für das, was Sie nutzen.
-          </p>
-        </div>
-      </div>
+      <p className={styles.disclaimer}>
+        ZollPilot bereitet deine Daten vor – die Einreichung beim Zoll machst du selbst.
+      </p>
     </Section>
   );
 }
@@ -187,15 +177,17 @@ function TrustSection() {
 /** Final CTA */
 function CtaSection() {
   return (
-    <Section maxWidth="md" padding="xl">
+    <Section maxWidth="md" padding="xl" className={styles.cta}>
       <div className={styles.ctaContent}>
-        <h2 className={styles.ctaTitle}>Behalte die Kontrolle – spare bei jeder Sendung.</h2>
+        <h2 className={styles.ctaTitle}>
+          Dein nächstes Paket wartet nicht.
+        </h2>
         <p className={styles.ctaSubtitle}>
-          Jetzt kostenlos registrieren und Zollanmeldung vorbereiten.
+          Registriere dich jetzt und bereite deine erste Zollanmeldung vor.
         </p>
         <Link href="/register">
           <Button variant="primary" size="lg">
-            Kostenlos registrieren
+            Kostenlos starten
           </Button>
         </Link>
       </div>
