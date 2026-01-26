@@ -44,12 +44,23 @@ def create_app() -> FastAPI:
 
     # Middleware-Reihenfolge ist wichtig: von außen nach innen
     # 1. CORS (äußerste)
+    # Erlaube mehrere Origins für Entwicklung (localhost) und Docker (host.docker.internal)
+    allowed_origins = [
+        settings.web_origin,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://host.docker.internal:3000",
+    ]
+    # Deduplizieren
+    allowed_origins = list(set(allowed_origins))
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.web_origin],
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+        expose_headers=["X-Request-Id", "Content-Disposition"],
     )
 
     # 2. Request ID (für Tracing)
