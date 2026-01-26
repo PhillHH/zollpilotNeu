@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-py"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  password_hash String
+  created_at    DateTime    @default(now())
+  memberships   Membership[]
+  sessions      Session[]
+  created_cases Case[]
+}
+
+model Tenant {
+  id          String       @id @default(uuid())
+  name        String
+  created_at  DateTime     @default(now())
+  memberships Membership[]
+  cases       Case[]
+}
+
+model Membership {
+  user_id   String
+  tenant_id String
+  role      Role
+
+  user   User   @relation(fields: [user_id], references: [id])
+  tenant Tenant @relation(fields: [tenant_id], references: [id])
+
+  @@id([user_id, tenant_id])
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  user_id    String
+  token_hash String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  USER
+}
+
+model Case {
+  id                  String     @id @default(uuid())
+  tenant_id           String
+  created_by_user_id  String
+  title               String
+  status              CaseStatus
+  created_at          DateTime   @default(now())
+  updated_at          DateTime   @updatedAt
+
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id])
+  created_by User     @relation(fields: [created_by_user_id], references: [id])
+}
+
+enum CaseStatus {
+  DRAFT
+  SUBMITTED
+  ARCHIVED
+}
+
