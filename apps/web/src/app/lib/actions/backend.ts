@@ -26,17 +26,17 @@ type BackendBinaryResult = {
   contentType: string | null;
 };
 
-function buildCookieHeader(): string {
-  const cookieStore = cookies();
+async function buildCookieHeader(): Promise<string> {
+  const cookieStore = await cookies();
   const pairs = cookieStore
     .getAll()
     .map(({ name, value }) => `${name}=${value}`);
   return pairs.join("; ");
 }
 
-function applySetCookies(setCookies: string[]): void {
+async function applySetCookies(setCookies: string[]): Promise<void> {
   if (setCookies.length === 0) return;
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   for (const cookie of setCookies) {
     const parts = cookie.split(";").map((part) => part.trim());
@@ -108,7 +108,7 @@ export async function backendJson(
   const headers = new Headers(init.headers);
   headers.set("X-Contract-Version", "1");
 
-  const cookieHeader = buildCookieHeader();
+  const cookieHeader = await buildCookieHeader();
   if (cookieHeader) {
     headers.set("Cookie", cookieHeader);
   }
@@ -119,7 +119,7 @@ export async function backendJson(
     body: init.body
   });
 
-  applySetCookies(getSetCookies(response));
+  await applySetCookies(getSetCookies(response));
 
   return {
     ok: response.ok,
@@ -136,7 +136,7 @@ export async function backendBinary(
   const headers = new Headers(init.headers);
   headers.set("X-Contract-Version", "1");
 
-  const cookieHeader = buildCookieHeader();
+  const cookieHeader = await buildCookieHeader();
   if (cookieHeader) {
     headers.set("Cookie", cookieHeader);
   }
@@ -147,7 +147,7 @@ export async function backendBinary(
     body: init.body
   });
 
-  applySetCookies(getSetCookies(response));
+  await applySetCookies(getSetCookies(response));
 
   const buffer = Buffer.from(await response.arrayBuffer());
 
