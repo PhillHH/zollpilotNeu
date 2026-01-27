@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, field_validator
 
 from app.core.rbac import Role
+from app.core.json import normalize_to_json_optional
 from app.dependencies.auth import AuthContext, require_role
 from app.db.prisma_client import prisma
 
@@ -327,14 +328,14 @@ async def grant_credits(
         },
     )
 
-    # Create ledger entry
+    # Create ledger entry with normalized JSON metadata
     metadata = {"note": payload.note} if payload.note else None
     await prisma.creditledgerentry.create(
         data={
             "tenant_id": tenant_id,
             "delta": payload.amount,
             "reason": "ADMIN_GRANT",
-            "metadata_json": metadata,
+            "metadata_json": normalize_to_json_optional(metadata),
             "created_by_user_id": context.user["id"],
         }
     )

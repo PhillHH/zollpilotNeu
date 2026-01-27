@@ -14,6 +14,7 @@ from fastapi.responses import Response
 from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
 from app.services.pdf_service import pdf_service
+from app.core.json import normalize_to_json
 
 
 router = APIRouter(prefix="/cases", tags=["pdf"])
@@ -73,16 +74,16 @@ async def _check_and_consume_credit(tenant_id: str, user_id: str, case_id: str, 
         data={"balance": {"decrement": 1}},
     )
     
-    # Create ledger entry
+    # Create ledger entry with normalized JSON metadata
     await prisma.creditledgerentry.create(
         data={
             "tenant_id": tenant_id,
             "delta": -1,
             "reason": "PDF_EXPORT",
-            "metadata_json": {
+            "metadata_json": normalize_to_json({
                 "case_id": case_id,
                 "version": version,
-            },
+            }),
             "created_by_user_id": user_id,
         }
     )

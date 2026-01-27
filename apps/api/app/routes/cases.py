@@ -8,44 +8,17 @@ from enum import Enum
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from prisma import Json
 from pydantic import BaseModel, field_validator
 
 from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
+from app.core.json import normalize_to_json
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 # Constants
 FIELD_KEY_PATTERN = re.compile(r"^[a-z0-9_.-]{1,64}$")
 FIELD_VALUE_MAX_SIZE = 16 * 1024  # 16KB
-
-
-def normalize_to_json(value: Any) -> Json:
-    """
-    Normalize a Python value for safe storage in a Prisma Json field.
-
-    Prisma-client-py interprets raw Python strings as JSON content to be parsed,
-    not as JSON string values. This function ensures all values are properly
-    serialized for the Json field type.
-
-    Args:
-        value: Any Python value (str, int, float, bool, None, dict, list)
-
-    Returns:
-        A prisma.Json wrapper containing the properly serialized value.
-
-    Examples:
-        - "hello" -> Json("hello") (stored as JSON string "hello")
-        - 123 -> Json(123) (stored as JSON number 123)
-        - {"a": 1} -> Json({"a": 1}) (stored as JSON object)
-        - None -> Json(None) (stored as JSON null)
-    """
-    # Round-trip through JSON to ensure the value is JSON-serializable
-    # and properly normalized. This catches any non-serializable types early.
-    serialized = json.dumps(value)
-    normalized = json.loads(serialized)
-    return Json(normalized)
 
 
 class StatusFilter(str, Enum):
