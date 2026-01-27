@@ -15,3 +15,5 @@ def error_response(
         payload["error"]["details"] = details
     return payload
 
+
+

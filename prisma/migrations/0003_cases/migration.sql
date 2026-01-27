@@ -17,3 +17,5 @@ ALTER TABLE "Case"
   ADD CONSTRAINT "Case_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT "Case_created_by_user_id_fkey" FOREIGN KEY ("created_by_user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+
+

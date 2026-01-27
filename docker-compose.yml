@@ -50,13 +50,10 @@ services:
   web:
     build:
       context: ./apps/web
-      args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     container_name: zollpilot-web
     restart: unless-stopped
     environment:
       API_BASE_URL: ${API_BASE_URL:-http://api:8000}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
       NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-zollpilot_session}
     ports:

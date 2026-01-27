@@ -1,3 +1,5 @@
+import { backendBinary, backendJson, type BackendRequestInit } from "../actions/backend";
+
 export type ApiError = {
   code: string;
   message: string;
@@ -6,22 +8,69 @@ export type ApiError = {
   status: number;
 };
 
+function getBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return "/api/backend";
+  }
+
+  return process.env.API_BASE_URL ?? "http://localhost:8000";
+}
+
+function toBackendInit(init: RequestInit = {}): BackendRequestInit {
+  const headers = new Headers(init.headers);
+  const body = typeof init.body === "string" ? init.body : undefined;
+
+  return {
+    method: init.method,
+    headers: Object.fromEntries(headers.entries()),
+    body
+  };
+}
+
+async function apiFetch(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const baseUrl = getBaseUrl();
+  const headers = new Headers(init.headers);
+  headers.set("X-Contract-Version", "1");
+
+  return fetch(`${baseUrl}${path}`, {
+    ...init,
+    credentials: init.credentials ?? "include",
+    headers
+  });
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const baseUrl =
-    process.env.API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000";
+  if (typeof window !== "undefined") {
+    const result = await backendJson(path, toBackendInit(init));
+    if (!result.ok) {
+      let payload: unknown = null;
+      try {
+        payload = JSON.parse(result.body);
+      } catch {
+        payload = null;
+      }
 
-  const headers = new Headers(init.headers);
-  headers.set("X-Contract-Version", "1");
+      const errorPayload = payload as { error?: { code?: string; message?: string; details?: unknown }; requestId?: string } | null;
+      const error = errorPayload?.error ?? {};
+      throw {
+        code: error.code ?? "UNKNOWN_ERROR",
+        message: error.message ?? "Request failed.",
+        details: error.details,
+        requestId: errorPayload?.requestId ?? result.requestId,
+        status: result.status
+      } satisfies ApiError;
+    }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    headers
-  });
+    return JSON.parse(result.body) as T;
+  }
+
+  const response = await apiFetch(path, init);
 
   const requestId = response.headers.get("X-Request-Id");
 
@@ -197,17 +246,48 @@ export const cases = {
    * Requires SUBMITTED status and 1 credit.
    */
   exportPdf: async (id: string): Promise<{ blob: Blob; filename: string }> => {
-    const baseUrl =
-      process.env.API_BASE_URL ??
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      "http://localhost:8000";
+    if (typeof window !== "undefined") {
+      const result = await backendBinary(`/cases/${id}/pdf`, {
+        method: "POST"
+      });
 
-    const response = await fetch(`${baseUrl}/cases/${id}/pdf`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "X-Contract-Version": "1"
+      if (!result.ok) {
+        let payload: unknown = null;
+        try {
+          payload = JSON.parse(atob(result.bodyBase64));
+        } catch {
+          payload = null;
+        }
+
+        const errorPayload = payload as { error?: { code?: string; message?: string; details?: unknown }; requestId?: string } | null;
+        const error = errorPayload?.error ?? {};
+        throw {
+          code: error.code ?? "UNKNOWN_ERROR",
+          message: error.message ?? "PDF export failed.",
+          details: error.details,
+          requestId: errorPayload?.requestId ?? result.requestId,
+          status: result.status
+        } satisfies ApiError;
       }
+
+      const bytes = Uint8Array.from(atob(result.bodyBase64), (char) => char.charCodeAt(0));
+      const blob = new Blob([bytes], {
+        type: result.contentType ?? "application/pdf"
+      });
+      let filename = "ZollPilot_Export.pdf";
+
+      if (result.contentDisposition) {
+        const match = result.contentDisposition.match(/filename="(.+)"/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      return { blob, filename };
+    }
+
+    const response = await apiFetch(`/cases/${id}/pdf`, {
+      method: "POST"
     });
 
     if (!response.ok) {
@@ -232,7 +312,7 @@ export const cases = {
     const blob = await response.blob();
     const contentDisposition = response.headers.get("Content-Disposition");
     let filename = "ZollPilot_Export.pdf";
-    
+
     if (contentDisposition) {
       const match = contentDisposition.match(/filename="(.+)"/);
       if (match) {

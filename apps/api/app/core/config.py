@@ -109,6 +109,10 @@ def get_settings() -> Settings:
     session_secret = os.getenv("SESSION_SECRET", "")
     database_url = os.getenv("DATABASE_URL", "")
     
+    session_cookie_domain = os.getenv("SESSION_COOKIE_DOMAIN") or None
+    if session_cookie_domain in {"localhost", "127.0.0.1"}:
+        session_cookie_domain = None
+
     settings = Settings(
         environment=environment,
         debug_mode=_get_bool(os.getenv("DEBUG_MODE"), False),
@@ -120,7 +124,7 @@ def get_settings() -> Settings:
         session_ttl_minutes=_get_int("SESSION_TTL_MINUTES", 120),
         session_cookie_name=os.getenv("SESSION_COOKIE_NAME", "zollpilot_session"),
         session_cookie_secure=_get_bool(os.getenv("SESSION_COOKIE_SECURE"), False),
-        session_cookie_domain=os.getenv("SESSION_COOKIE_DOMAIN") or None,
+        session_cookie_domain=session_cookie_domain,
         session_cookie_samesite=os.getenv("SESSION_COOKIE_SAMESITE", "Lax"),
         web_origin=os.getenv("WEB_ORIGIN", "http://localhost:3000"),
         rate_limit_default=_get_int("RATE_LIMIT_DEFAULT", 60),

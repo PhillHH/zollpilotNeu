@@ -543,3 +543,5 @@ Get credit ledger entries for a tenant.
 { "data": [{ "id": "uuid", "delta": "int", "reason": "string", "metadata_json": "any|null", "created_by_user_id": "uuid|null", "created_at": "datetime" }] }
 ```
 
+
+

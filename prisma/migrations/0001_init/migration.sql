@@ -13,3 +13,5 @@ CREATE TABLE "Tenant" (
     CONSTRAINT "Tenant_pkey" PRIMARY KEY ("id")
 );
 
+
+

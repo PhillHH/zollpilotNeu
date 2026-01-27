@@ -24,3 +24,5 @@ def test_invalid_contract_version_returns_400() -> None:
     body = response.json()
     assert body["error"]["code"] == "CONTRACT_VERSION_INVALID"
 
+
+

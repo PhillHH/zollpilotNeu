@@ -27,11 +27,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build arguments for environment variables
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-
 # Set environment for build
-ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the application
@@ -71,3 +67,5 @@ USER node
 EXPOSE 3000
 
 CMD ["node", "server.js"]
+
+

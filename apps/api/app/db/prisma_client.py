@@ -12,3 +12,5 @@ async def connect_prisma() -> None:
 async def disconnect_prisma() -> None:
     await prisma.disconnect()
 
+
+

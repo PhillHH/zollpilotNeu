@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PageShell } from "../../design-system/primitives/PageShell";
+import { apiRequest } from "../../lib/api/client";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -27,17 +28,12 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     async function loadAuth() {
       try {
-        const res = await fetch(
-          (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000") +
-            "/auth/me",
-          { credentials: "include", headers: { "X-Contract-Version": "1" } }
+        const data = await apiRequest<{ data: { permissions?: { can_access_admin?: boolean } } }>(
+          "/auth/me"
         );
-        if (res.ok) {
-          const data = await res.json();
-          setAuth({
-            canAccessAdmin: data.data?.permissions?.can_access_admin ?? false,
-          });
-        }
+        setAuth({
+          canAccessAdmin: data.data?.permissions?.can_access_admin ?? false,
+        });
       } catch {
         // Ignore errors - admin link just won't show
       }
