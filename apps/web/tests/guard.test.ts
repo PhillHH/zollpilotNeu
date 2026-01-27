@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-import { requireSession } from "../app/lib/auth";
+import { requireSession } from "../src/app/lib/auth";
 
 const redirectMock = vi.fn();
 
