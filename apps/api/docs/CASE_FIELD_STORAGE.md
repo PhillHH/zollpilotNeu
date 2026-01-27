@@ -1,5 +1,8 @@
 # CaseField JSON Storage
 
+> **Note**: This document is specific to `CaseField.value_json`. For comprehensive documentation
+> covering ALL Prisma Json fields in the codebase, see [PRISMA_JSON_NORMALIZATION.md](./PRISMA_JSON_NORMALIZATION.md).
+
 This document explains how field values are stored in the `CaseField` model and why JSON normalization is required.
 
 ## Overview
@@ -101,6 +104,9 @@ If a value cannot be JSON-serialized (e.g., contains circular references or non-
 
 ## Related Files
 
-- `apps/api/app/routes/cases.py` - Contains `normalize_to_json()` and `upsert_field()`
-- `apps/api/tests/test_cases.py` - Contains tests for JSON field storage
+- `apps/api/app/core/json.py` - Shared `normalize_to_json()` utility (used by all Json fields)
+- `apps/api/app/routes/cases.py` - `upsert_field()` endpoint using the shared normalizer
+- `apps/api/tests/test_cases.py` - Integration tests for JSON field storage
+- `apps/api/tests/test_json_normalization.py` - Comprehensive unit tests for normalizer
 - `prisma/schema.prisma` - Defines the `CaseField` model
+- `apps/api/docs/PRISMA_JSON_NORMALIZATION.md` - Comprehensive JSON normalization guide

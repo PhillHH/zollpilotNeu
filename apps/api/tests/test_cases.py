@@ -406,7 +406,7 @@ def test_patch_case_updates_title(case_context: CaseTestContext) -> None:
 
 def test_normalize_to_json_with_string() -> None:
     """normalize_to_json correctly wraps string values for Prisma Json field."""
-    from app.routes.cases import normalize_to_json
+    from app.core.json import normalize_to_json
     from prisma import Json
 
     result = normalize_to_json("dsadasdasd")
@@ -417,7 +417,7 @@ def test_normalize_to_json_with_string() -> None:
 
 def test_normalize_to_json_with_number() -> None:
     """normalize_to_json correctly handles numeric values."""
-    from app.routes.cases import normalize_to_json
+    from app.core.json import normalize_to_json
     from prisma import Json
 
     result_int = normalize_to_json(42)
@@ -431,7 +431,7 @@ def test_normalize_to_json_with_number() -> None:
 
 def test_normalize_to_json_with_boolean() -> None:
     """normalize_to_json correctly handles boolean values."""
-    from app.routes.cases import normalize_to_json
+    from app.core.json import normalize_to_json
     from prisma import Json
 
     result_true = normalize_to_json(True)
@@ -445,7 +445,7 @@ def test_normalize_to_json_with_boolean() -> None:
 
 def test_normalize_to_json_with_null() -> None:
     """normalize_to_json correctly handles null/None values."""
-    from app.routes.cases import normalize_to_json
+    from app.core.json import normalize_to_json
     from prisma import Json
 
     result = normalize_to_json(None)
@@ -455,7 +455,7 @@ def test_normalize_to_json_with_null() -> None:
 
 def test_normalize_to_json_with_dict() -> None:
     """normalize_to_json correctly handles object/dict values."""
-    from app.routes.cases import normalize_to_json
+    from app.core.json import normalize_to_json
     from prisma import Json
 
     obj = {"name": "Test", "count": 5, "active": True}
@@ -466,7 +466,7 @@ def test_normalize_to_json_with_dict() -> None:
 
 def test_normalize_to_json_with_list() -> None:
     """normalize_to_json correctly handles array/list values."""
-    from app.routes.cases import normalize_to_json
+    from app.core.json import normalize_to_json
     from prisma import Json
 
     arr = [1, "two", {"three": 3}]
@@ -477,7 +477,7 @@ def test_normalize_to_json_with_list() -> None:
 
 def test_normalize_to_json_with_nested_structure() -> None:
     """normalize_to_json correctly handles deeply nested structures."""
-    from app.routes.cases import normalize_to_json
+    from app.core.json import normalize_to_json
     from prisma import Json
 
     nested = {

@@ -19,6 +19,7 @@ from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
 from app.domain.procedures import procedure_loader, validate_case_fields
 from app.domain.summary import generate_case_summary, SummaryItem, SummarySection
+from app.core.json import normalize_to_json
 
 
 router = APIRouter(prefix="/cases", tags=["case-lifecycle"])
@@ -195,15 +196,15 @@ async def submit_case(
             },
         )
 
-    # Create snapshot
+    # Create snapshot with normalized JSON fields
     snapshot = await prisma.casesnapshot.create(
         data={
             "case_id": case_id,
             "version": case.version,
             "procedure_code": case.procedure.code,
             "procedure_version": case.procedure.version,
-            "fields_json": fields_dict,
-            "validation_json": {"valid": True, "errors": []},
+            "fields_json": normalize_to_json(fields_dict),
+            "validation_json": normalize_to_json({"valid": True, "errors": []}),
         }
     )
 
