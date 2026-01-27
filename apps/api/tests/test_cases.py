@@ -142,6 +142,14 @@ class FakeCaseFieldModel:
     def __init__(self) -> None:
         self._fields: list[dict] = []
 
+    def _extract_json_value(self, value):
+        """Extract the underlying value from a prisma.Json wrapper if present."""
+        from prisma import Json
+        if isinstance(value, Json):
+            # Access the internal data attribute of the Json wrapper
+            return value.data if hasattr(value, 'data') else value
+        return value
+
     async def find_many(self, where: dict) -> list[dict]:
         return [f for f in self._fields if f["case_id"] == where["case_id"]]
 
@@ -152,7 +160,8 @@ class FakeCaseFieldModel:
 
         for field in self._fields:
             if field["case_id"] == case_id and field["key"] == key:
-                field["value_json"] = data["update"]["value_json"]
+                # Extract value from Json wrapper if present
+                field["value_json"] = self._extract_json_value(data["update"]["value_json"])
                 field["updated_at"] = datetime.utcnow()
                 return field
 
@@ -160,7 +169,8 @@ class FakeCaseFieldModel:
             "id": str(uuid.uuid4()),
             "case_id": data["create"]["case_id"],
             "key": data["create"]["key"],
-            "value_json": data["create"]["value_json"],
+            # Extract value from Json wrapper if present
+            "value_json": self._extract_json_value(data["create"]["value_json"]),
             "value_text": None,
             "updated_at": datetime.utcnow(),
         }
@@ -389,4 +399,224 @@ def test_patch_case_updates_title(case_context: CaseTestContext) -> None:
     )
     assert response.status_code == 200
     assert response.json()["data"]["title"] == "Updated Title"
+
+
+# --- JSON Field Storage Tests ---
+
+
+def test_normalize_to_json_with_string() -> None:
+    """normalize_to_json correctly wraps string values for Prisma Json field."""
+    from app.routes.cases import normalize_to_json
+    from prisma import Json
+
+    result = normalize_to_json("dsadasdasd")
+    assert isinstance(result, Json)
+    # The internal value should be the string itself
+    assert result == Json("dsadasdasd")
+
+
+def test_normalize_to_json_with_number() -> None:
+    """normalize_to_json correctly handles numeric values."""
+    from app.routes.cases import normalize_to_json
+    from prisma import Json
+
+    result_int = normalize_to_json(42)
+    assert isinstance(result_int, Json)
+    assert result_int == Json(42)
+
+    result_float = normalize_to_json(3.14)
+    assert isinstance(result_float, Json)
+    assert result_float == Json(3.14)
+
+
+def test_normalize_to_json_with_boolean() -> None:
+    """normalize_to_json correctly handles boolean values."""
+    from app.routes.cases import normalize_to_json
+    from prisma import Json
+
+    result_true = normalize_to_json(True)
+    assert isinstance(result_true, Json)
+    assert result_true == Json(True)
+
+    result_false = normalize_to_json(False)
+    assert isinstance(result_false, Json)
+    assert result_false == Json(False)
+
+
+def test_normalize_to_json_with_null() -> None:
+    """normalize_to_json correctly handles null/None values."""
+    from app.routes.cases import normalize_to_json
+    from prisma import Json
+
+    result = normalize_to_json(None)
+    assert isinstance(result, Json)
+    assert result == Json(None)
+
+
+def test_normalize_to_json_with_dict() -> None:
+    """normalize_to_json correctly handles object/dict values."""
+    from app.routes.cases import normalize_to_json
+    from prisma import Json
+
+    obj = {"name": "Test", "count": 5, "active": True}
+    result = normalize_to_json(obj)
+    assert isinstance(result, Json)
+    assert result == Json(obj)
+
+
+def test_normalize_to_json_with_list() -> None:
+    """normalize_to_json correctly handles array/list values."""
+    from app.routes.cases import normalize_to_json
+    from prisma import Json
+
+    arr = [1, "two", {"three": 3}]
+    result = normalize_to_json(arr)
+    assert isinstance(result, Json)
+    assert result == Json(arr)
+
+
+def test_normalize_to_json_with_nested_structure() -> None:
+    """normalize_to_json correctly handles deeply nested structures."""
+    from app.routes.cases import normalize_to_json
+    from prisma import Json
+
+    nested = {
+        "level1": {
+            "level2": {
+                "level3": ["a", "b", {"c": 3}]
+            }
+        },
+        "array": [1, [2, [3]]]
+    }
+    result = normalize_to_json(nested)
+    assert isinstance(result, Json)
+    assert result == Json(nested)
+
+
+def test_field_upsert_with_string_value(case_context: CaseTestContext) -> None:
+    """PUT /cases/{id}/fields/{key} with string value succeeds."""
+    response = case_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    create_resp = case_context.client.post("/cases", json={"title": "Test"})
+    case_id = create_resp.json()["data"]["id"]
+
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_string",
+        json={"value": "dsadasdasd"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["key"] == "test_string"
+    assert body["data"]["value"] == "dsadasdasd"
+
+
+def test_field_upsert_with_number_value(case_context: CaseTestContext) -> None:
+    """PUT /cases/{id}/fields/{key} with numeric value succeeds."""
+    response = case_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    create_resp = case_context.client.post("/cases", json={"title": "Test"})
+    case_id = create_resp.json()["data"]["id"]
+
+    # Integer
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_int",
+        json={"value": 42}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["value"] == 42
+
+    # Float
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_float",
+        json={"value": 3.14159}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["value"] == 3.14159
+
+
+def test_field_upsert_with_object_value(case_context: CaseTestContext) -> None:
+    """PUT /cases/{id}/fields/{key} with object value succeeds."""
+    response = case_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    create_resp = case_context.client.post("/cases", json={"title": "Test"})
+    case_id = create_resp.json()["data"]["id"]
+
+    obj_value = {"name": "Widget", "quantity": 10, "metadata": {"color": "blue"}}
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_object",
+        json={"value": obj_value}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["value"] == obj_value
+
+
+def test_field_upsert_with_null_value(case_context: CaseTestContext) -> None:
+    """PUT /cases/{id}/fields/{key} with null value succeeds."""
+    response = case_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    create_resp = case_context.client.post("/cases", json={"title": "Test"})
+    case_id = create_resp.json()["data"]["id"]
+
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_null",
+        json={"value": None}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["value"] is None
+
+
+def test_field_upsert_with_array_value(case_context: CaseTestContext) -> None:
+    """PUT /cases/{id}/fields/{key} with array value succeeds."""
+    response = case_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    create_resp = case_context.client.post("/cases", json={"title": "Test"})
+    case_id = create_resp.json()["data"]["id"]
+
+    arr_value = ["item1", 2, {"nested": True}]
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_array",
+        json={"value": arr_value}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["value"] == arr_value
+
+
+def test_field_upsert_with_boolean_value(case_context: CaseTestContext) -> None:
+    """PUT /cases/{id}/fields/{key} with boolean value succeeds."""
+    response = case_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    create_resp = case_context.client.post("/cases", json={"title": "Test"})
+    case_id = create_resp.json()["data"]["id"]
+
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_bool_true",
+        json={"value": True}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["value"] is True
+
+    response = case_context.client.put(
+        f"/cases/{case_id}/fields/test_bool_false",
+        json={"value": False}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["value"] is False
 
