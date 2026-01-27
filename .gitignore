@@ -11,3 +11,4 @@ coverage/
 tmp/
 packages/shared/dist/
 
+apps/web/tsconfig.tsbuildinfo

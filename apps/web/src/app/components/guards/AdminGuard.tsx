@@ -5,10 +5,15 @@ import { useEffect, useState } from "react";
 import { Section } from "../../design-system/primitives/Section";
 import { Card } from "../../design-system/primitives/Card";
 import { Button } from "../../design-system/primitives/Button";
+import { apiRequest, type ApiError } from "../../lib/api/client";
 
 type AuthMeData = {
   permissions: { can_access_admin: boolean };
   role: string;
+};
+
+type AuthMeResponse = {
+  data: AuthMeData;
 };
 
 type AdminGuardProps = {
@@ -31,19 +36,19 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
+        // Use apiRequest which properly forwards cookies via server action
+        const response = await apiRequest<AuthMeResponse>("/auth/me");
+        setAuth(response.data);
+      } catch (error) {
+        // Auth failures (401) or other errors -> not authenticated
+        const apiError = error as ApiError;
+        if (apiError.status === 401) {
           setAuth(null);
-          return;
+        } else {
+          // Log unexpected errors but treat as unauthenticated
+          console.error("Auth check failed:", apiError);
+          setAuth(null);
         }
-
-        const data = await response.json();
-        setAuth(data.data);
-      } catch {
-        setAuth(null);
       }
     }
 
