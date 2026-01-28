@@ -576,6 +576,18 @@ The content system provides a public-facing blog and FAQ section for SEO and use
 - **SEO Optimized**: Proper meta tags, canonical URLs, sitemap
 - **Crawlable**: Public pages indexed; app/admin excluded
 - **Maintainable**: Content editable via Git workflow
+- **Trust-First**: Clear separation of explanation, instruction, and product boundaries
+
+**Content Type Separation:**
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| Erklärung | Background knowledge | "Was ist eine Zollanmeldung?" |
+| Anleitung | Step-by-step guidance | "So bereitest du deine Daten vor" |
+| Produktgrenzen | What ZollPilot does NOT do | "ZollPilot übermittelt keine Daten" |
+
+This separation ensures content never conflates educational information with product promises.
+See `docs/WORDING_GUIDE.md` for allowed/forbidden terminology.
 
 **Architecture:**
 

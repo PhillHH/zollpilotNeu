@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import { vi, describe, test, expect, beforeEach } from "vitest";
 
@@ -262,6 +263,87 @@ describe("Content System", () => {
 
       const faqLink = screen.getByText("FAQ").closest("a");
       expect(faqLink).toHaveAttribute("href", "/faq");
+    });
+  });
+
+  describe("SEO Configuration", () => {
+    test("sitemap includes content URLs", async () => {
+      const { getAllContentUrls } = await import("../src/app/lib/content");
+      const urls = getAllContentUrls();
+
+      // Content pages should be included
+      expect(urls.some((u) => u.url.includes("/blog/"))).toBe(true);
+      expect(urls.some((u) => u.url.includes("/faq/"))).toBe(true);
+
+      // Each URL should have a lastmod date
+      urls.forEach((u) => {
+        expect(u.lastmod).toBeDefined();
+        expect(new Date(u.lastmod).toString()).not.toBe("Invalid Date");
+      });
+    });
+
+    test("content URLs do not include /app paths", async () => {
+      const { getAllContentUrls } = await import("../src/app/lib/content");
+      const urls = getAllContentUrls();
+
+      // /app should never be in sitemap content URLs
+      urls.forEach((u) => {
+        expect(u.url).not.toMatch(/^\/app/);
+        expect(u.url).not.toMatch(/^\/admin/);
+        expect(u.url).not.toMatch(/^\/api/);
+      });
+    });
+
+    test("content frontmatter has required SEO fields", async () => {
+      const { getBlogPosts, getFaqEntries } = await import(
+        "../src/app/lib/content"
+      );
+      const posts = getBlogPosts();
+      const faqs = getFaqEntries();
+
+      // All blog posts must have title, description, slug
+      posts.forEach((post) => {
+        expect(post.meta.title).toBeDefined();
+        expect(post.meta.title.length).toBeGreaterThan(0);
+        expect(post.meta.description).toBeDefined();
+        expect(post.meta.slug).toBeDefined();
+        expect(post.meta.published_at).toBeDefined();
+      });
+
+      // All FAQ entries must have title, description, slug
+      faqs.forEach((faq) => {
+        expect(faq.meta.title).toBeDefined();
+        expect(faq.meta.title.length).toBeGreaterThan(0);
+        expect(faq.meta.description).toBeDefined();
+        expect(faq.meta.slug).toBeDefined();
+        expect(faq.meta.published_at).toBeDefined();
+      });
+    });
+  });
+
+  describe("Content Structure", () => {
+    test("blog posts have valid tags array", async () => {
+      const { getBlogPosts } = await import("../src/app/lib/content");
+      const posts = getBlogPosts();
+
+      posts.forEach((post) => {
+        if (post.meta.tags) {
+          expect(Array.isArray(post.meta.tags)).toBe(true);
+        }
+      });
+    });
+
+    test("FAQ entries have valid category", async () => {
+      const { getFaqByCategory } = await import("../src/app/lib/content");
+      const grouped = getFaqByCategory();
+
+      // Should have at least one category
+      expect(Object.keys(grouped).length).toBeGreaterThan(0);
+
+      // Each category should have entries
+      Object.values(grouped).forEach((entries) => {
+        expect(entries.length).toBeGreaterThan(0);
+      });
     });
   });
 });
