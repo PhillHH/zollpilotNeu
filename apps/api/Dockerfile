@@ -85,7 +85,8 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# start-period must be long enough for: prisma generate + migrate + uvicorn start
+HEALTHCHECK --interval=10s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${API_PORT}/health -H "X-Contract-Version: 1" || exit 1
 
 # Switch to non-root user
