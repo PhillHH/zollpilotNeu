@@ -1,190 +1,294 @@
 # Admin-Handbuch
 
-Dieses Dokument beschreibt die administrativen Funktionen in ZollPilot.
-
----
-
-## Voraussetzungen
-
-- Sie benötigen die Rolle ADMIN oder OWNER
-- Zugriff auf den Admin-Bereich unter `/admin`
-
----
+> Dokumentation des Admin-Bereichs für SYSTEM_ADMIN-Benutzer
 
 ## Übersicht
 
-Der Admin-Bereich bietet folgende Funktionen:
+Der Admin-Bereich (`/admin`) ist nur für Benutzer mit der Rolle `SYSTEM_ADMIN` zugänglich. Er bietet Zugriff auf systemweite Verwaltungsfunktionen:
 
-| Bereich | Funktion |
-|---------|----------|
-| **Mandanten** | Organisationen verwalten, Tarife zuweisen, Guthaben vergeben |
-| **Tarife** | Abonnement-Pläne erstellen und verwalten |
+- **Nutzer**: Übersicht aller registrierten Benutzer
+- **Mandanten**: Verwaltung von Organisationen/Firmen
+- **Tarife**: Verwaltung von Abonnement-Plänen
+
+## Navigation
+
+| Menüpunkt | Pfad | Beschreibung |
+|-----------|------|--------------|
+| Übersicht | `/admin` | Dashboard mit Systemstatistiken |
+| Nutzer | `/admin/users` | Liste aller Benutzer |
+| Mandanten | `/admin/tenants` | Liste aller Mandanten |
+| Tarife | `/admin/plans` | Tarif-Verwaltung |
+| Historie | `/admin/events` | Aktivitäts-Historie |
 
 ---
 
-## Mandanten verwalten
+## Nutzer-Verwaltung
 
-### Mandantenübersicht
+### Nutzerliste (`/admin/users`)
 
-1. Navigieren Sie zu `/admin/tenants`
-2. Die Tabelle zeigt:
-   - **Mandant**: Name der Organisation
-   - **Tarif**: Zugewiesener Plan (Badge)
-   - **Guthaben**: Aktueller Credit-Stand
-   - **Erstellt am**: Registrierungsdatum
-3. Klicken Sie auf "Verwalten", um Details zu öffnen
-
-### Tarif zuweisen
-
-1. Öffnen Sie die Mandanten-Detailseite
-2. Im Bereich "Tarif":
-   - Wählen Sie einen aktiven Tarif aus der Dropdown-Liste
-   - Klicken Sie auf "Tarif speichern"
-3. Der neue Tarif ist sofort aktiv
-
-### Guthaben vergeben
-
-1. Öffnen Sie die Mandanten-Detailseite
-2. Im Bereich "Guthaben":
-   - Geben Sie den Betrag ein (positive Zahl)
-   - Optional: Fügen Sie einen Hinweis hinzu (z.B. "Willkommensbonus")
-   - Klicken Sie auf "Guthaben vergeben"
-3. Das Guthaben wird sofort gutgeschrieben
-4. Eine Erfolgsmeldung erscheint: "Guthaben erfolgreich vergeben"
-
-### Guthaben-Historie einsehen
-
-Die Tabelle "Guthaben-Historie" zeigt die letzten 50 Bewegungen:
+Die Nutzerliste zeigt alle registrierten Benutzer mit folgenden Informationen:
 
 | Spalte | Beschreibung |
 |--------|--------------|
-| Datum | Zeitpunkt der Buchung |
-| Änderung | +/- Betrag (farbcodiert) |
-| Grund | Art der Buchung (Badge) |
-| Hinweis | Optionaler Kommentar |
+| **E-Mail** | E-Mail-Adresse des Benutzers |
+| **Typ** | `Privat` oder `Unternehmen` |
+| **Mandant** | Zugeordnete Organisation (nur bei Unternehmensnutzern) |
+| **Registriert am** | Datum der Registrierung |
+| **Letzter Login** | Zeitpunkt des letzten Logins |
+| **Status** | `Aktiv` oder `Deaktiviert` |
 
-**Buchungsgründe:**
+### Nutzertypen
 
-| Grund | Bedeutung |
-|-------|-----------|
-| Admin-Vergabe | Manuell durch Admin vergeben |
-| Tarif-Bonus | Automatisch durch Tarifwechsel |
-| PDF-Export | Verbrauch durch PDF-Download |
-| Erstattung | Manuelle Gutschrift |
+| Typ | Beschreibung |
+|-----|--------------|
+| `PRIVATE` | Privatnutzer ohne Firmenzugehörigkeit |
+| `BUSINESS` | Unternehmensnutzer mit Mandanten-Zuordnung |
 
----
+### Nutzerstatus
 
-## Tarife verwalten
+| Status | Beschreibung |
+|--------|--------------|
+| `ACTIVE` | Nutzer kann sich einloggen und arbeiten |
+| `DISABLED` | Nutzer ist gesperrt (kein Login möglich) |
 
-### Tarifübersicht
+### Nutzer-Detail (`/admin/users/[id]`)
 
-1. Navigieren Sie zu `/admin/plans`
-2. Die Tabelle zeigt alle Tarife mit:
-   - **Code**: Eindeutiger Bezeichner
-   - **Name**: Anzeigename
-   - **Intervall**: Abrechnungszeitraum
-   - **Preis**: Preis in EUR
-   - **Status**: Aktiv oder Inaktiv
+Die Detailansicht eines Nutzers zeigt:
 
-### Neuen Tarif erstellen
+**Stammdaten:**
+- E-Mail-Adresse
+- Nutzertyp (Privat/Unternehmen)
+- Status (Aktiv/Deaktiviert)
+- Registrierungsdatum
+- Letzter Login
 
-1. Klicken Sie auf "Neuen Tarif erstellen"
-2. Füllen Sie das Formular aus:
-   - **Code**: Großbuchstaben (z.B. `BASIC`, `PREMIUM`)
-   - **Name**: Anzeigename (z.B. "Basis-Tarif")
-   - **Intervall**: Keine / Monatlich / Jährlich / Einmalig
-   - **Preis**: In Cent (z.B. 999 = 9,99 €)
-3. Klicken Sie auf "Tarif erstellen"
+**Mandant:**
+- Zugeordnete Organisation (falls vorhanden)
+- Link zur Mandanten-Detailseite
 
-### Tarif aktivieren/deaktivieren
-
-- **Aktivieren**: Tarif wird für Zuweisung verfügbar
-- **Deaktivieren**: Tarif kann nicht mehr zugewiesen werden
-  - Bestehende Zuweisungen bleiben erhalten
+**Aktivitäts-Historie:**
+- Letzte 50 Ereignisse
+- Event-Typen: Registrierung, Login, Logout, Passwort-Reset, Status-Änderung
 
 ---
 
-## Häufige Aufgaben
+## Mandanten-Verwaltung
 
-### Ersteinrichtung
+### Mandantenliste (`/admin/tenants`)
 
-1. Registrieren Sie den ersten Benutzer (wird automatisch OWNER)
-2. Gehen Sie zu `/admin/plans`
-3. Der FREE-Tarif ist bereits vorhanden
-4. Erstellen Sie weitere Tarife nach Bedarf
-5. Weisen Sie Ihrem Mandanten einen Tarif zu
+Die Mandantenliste zeigt alle registrierten Organisationen:
 
-### Testguthaben vergeben
+| Spalte | Beschreibung |
+|--------|--------------|
+| **Mandant** | Name der Organisation |
+| **Nutzer** | Anzahl der zugeordneten Benutzer |
+| **Erstellt am** | Datum der Erstellung |
+| **Tarif** | Aktuell aktiver Tarif (oder "Kein Tarif") |
+| **Guthaben** | Credit-Balance für Exporte |
+| **Aktionen** | Link zur Detailansicht |
 
-1. Gehen Sie zu `/admin/tenants`
-2. Finden Sie den Mandanten
-3. Klicken Sie auf "Verwalten"
-4. Vergeben Sie Credits mit Hinweis "Testzugang"
+### Mandanten-Detail (`/admin/tenants/[id]`)
 
-### Niedriger Guthabenstand
+Die Detailansicht eines Mandanten zeigt:
 
-Wenn ein Benutzer keine PDFs herunterladen kann:
+**Stammdaten:**
+- Name der Organisation
+- Mandanten-ID
+- Erstellungsdatum
 
-1. Prüfen Sie den Guthabenstand
-2. Prüfen Sie die Historie auf ungewöhnliche Muster
-3. Vergeben Sie ggf. Credits mit Hinweis
+**Tarif-Verwaltung:**
+- Aktueller Tarif
+- Tarif ändern (aus aktiven Tarifen auswählen)
 
----
+**Guthaben-Verwaltung:**
+- Aktuelle Credit-Balance
+- Credits gutschreiben (Betrag + optionaler Hinweis)
 
-## Guthabenverbrauch
+**Nutzerliste:**
+- Alle Nutzer des Mandanten
+- E-Mail, Typ, Status, Registrierungsdatum
+- Link zur Nutzer-Detailseite
 
-### PDF-Export
-
-Bei jedem PDF-Download:
-- **1 Credit wird abgezogen**
-- Buchung mit Grund `PDF_EXPORT`
-- Metadaten: Fall-ID und Version
-
-### Empfohlene Preisgestaltung
-
-| Aktion | Empfohlene Credits |
-|--------|-------------------|
-| PDF-Export | 1 Credit |
-| Zukünftig: Priorität | 5 Credits |
-| Zukünftig: Speicher | 2 Credits/Monat |
+**Guthaben-Historie:**
+- Letzte 50 Ledger-Einträge
+- Datum, Änderung, Grund, Hinweis
 
 ---
 
-## UI-Übersicht
+## Tarif-Verwaltung
 
-### Farbcodes in der Oberfläche
+### Tarifliste (`/admin/plans`)
 
-| Element | Bedeutung |
-|---------|-----------|
-| 🟢 Grüner Text | Positive Änderung (+Credits) |
-| 🔴 Roter Text | Negative Änderung (-Credits) |
-| Aktiv-Badge | Tarif ist verfügbar |
-| Inaktiv-Badge | Tarif ist deaktiviert |
+Übersicht aller verfügbaren Tarife:
 
-### Feedback-Meldungen
+| Spalte | Beschreibung |
+|--------|--------------|
+| **Code** | Eindeutiger Tarif-Code (z.B. `BASIC`, `PREMIUM`) |
+| **Name** | Anzeigename des Tarifs |
+| **Intervall** | `ONE_TIME`, `MONTHLY`, `YEARLY`, `NONE` |
+| **Preis** | Preis in Cent (oder leer) |
+| **Credits** | Inkludierte Credits für Exporte |
+| **Verfahren** | Erlaubte Verfahrensarten (IZA, IAA, IPK) |
+| **Status** | Aktiv oder Deaktiviert |
 
-- **Grüner Banner**: Aktion erfolgreich
-- **Roter Banner**: Fehler aufgetreten
-- Meldungen verschwinden nach 3 Sekunden automatisch
+### Verfahrensarten (ProcedureCode)
 
----
+| Code | Beschreibung |
+|------|--------------|
+| `IZA` | Individuelle Zollanmeldung |
+| `IAA` | Import-/Ausfuhrabfertigung |
+| `IPK` | Importkontrolle |
 
-## API-Referenz
+### Tarif-Aktionen
 
-Detaillierte Endpunkt-Dokumentation: `docs/API_CONTRACTS.md`
-
-| Endpunkt | Beschreibung |
-|----------|--------------|
-| `GET /admin/plans` | Tarife auflisten |
-| `POST /admin/plans` | Tarif erstellen |
-| `PATCH /admin/plans/{id}` | Tarif bearbeiten |
-| `POST /admin/plans/{id}/activate` | Aktivieren |
-| `POST /admin/plans/{id}/deactivate` | Deaktivieren |
-| `GET /admin/tenants` | Mandanten auflisten |
-| `POST /admin/tenants/{id}/plan` | Tarif zuweisen |
-| `POST /admin/tenants/{id}/credits/grant` | Guthaben vergeben |
-| `GET /admin/tenants/{id}/credits/ledger` | Historie abrufen |
+- **Neuen Tarif erstellen**: Code, Name, Intervall, Preis, Credits und Verfahren festlegen
+- **Tarif bearbeiten**: Name, Preis, Credits oder Verfahren ändern
+- **Tarif aktivieren**: Tarif für neue Zuweisungen verfügbar machen
+- **Tarif deaktivieren**: Tarif für neue Zuweisungen sperren
 
 ---
 
-*Letzte Aktualisierung: Sprint 2 (Design System v1)*
+## Aktivitäts-Historie
+
+### Historie-Ansicht (`/admin/events`)
+
+Die Historie zeigt alle Ereignisse im System:
+
+| Spalte | Beschreibung |
+|--------|--------------|
+| **Zeitpunkt** | Datum und Uhrzeit des Ereignisses |
+| **Ereignis** | Event-Typ als Badge |
+| **Nutzer** | E-Mail mit Link zur Nutzer-Detailseite |
+| **Mandant** | Mandantenname mit Link (falls vorhanden) |
+| **Details** | Auszug aus den Metadaten |
+
+### Filter
+
+- **Nutzer**: Nach bestimmtem Nutzer filtern
+- **Mandant**: Nach Mandant filtern (zeigt alle Nutzer-Events des Mandanten)
+- **Event-Typ**: Nach Ereignisart filtern
+
+### Event-Typen
+
+| Event | Beschreibung | Badge |
+|-------|--------------|-------|
+| `REGISTERED` | Nutzer registriert | Success |
+| `LOGIN` | Login erfolgreich | Info |
+| `LOGOUT` | Logout durchgeführt | Neutral |
+| `PASSWORD_RESET` | Passwort zurückgesetzt | Warning |
+| `STATUS_CHANGED` | Status geändert | Warning |
+| `PURCHASE` | Kauf getätigt | Success |
+| `CREDIT_USED` | Credits verwendet | Info |
+| `PLAN_CHANGED` | Tarif geändert | Info |
+
+### Pagination
+
+- 50 Einträge pro Seite
+- Navigation über Vor/Zurück-Buttons
+
+---
+
+## API-Endpoints
+
+### Nutzer
+
+| Methode | Endpoint | Beschreibung |
+|---------|----------|--------------|
+| `GET` | `/admin/users` | Liste aller Nutzer |
+| `GET` | `/admin/users/{id}` | Nutzer-Details mit Event-Historie |
+
+### Events
+
+| Methode | Endpoint | Beschreibung |
+|---------|----------|--------------|
+| `GET` | `/admin/events` | Liste aller Events (mit Filter & Pagination) |
+
+**Query-Parameter:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `user_id` | string | Filter nach Nutzer |
+| `tenant_id` | string | Filter nach Mandant |
+| `event_type` | string | Filter nach Event-Typ |
+| `page` | int | Seitennummer (default: 1) |
+| `page_size` | int | Einträge pro Seite (default: 50, max: 100) |
+
+### Mandanten
+
+| Methode | Endpoint | Beschreibung |
+|---------|----------|--------------|
+| `GET` | `/admin/tenants` | Liste aller Mandanten |
+| `GET` | `/admin/tenants/{id}` | Mandanten-Details mit Nutzerliste |
+| `POST` | `/admin/tenants/{id}/plan` | Tarif zuweisen |
+| `POST` | `/admin/tenants/{id}/credits/grant` | Credits gutschreiben |
+| `GET` | `/admin/tenants/{id}/credits/ledger` | Credit-Historie |
+
+### Tarife
+
+| Methode | Endpoint | Beschreibung |
+|---------|----------|--------------|
+| `GET` | `/admin/plans` | Liste aller Tarife |
+| `POST` | `/admin/plans` | Neuen Tarif erstellen |
+| `PATCH` | `/admin/plans/{id}` | Tarif bearbeiten |
+| `POST` | `/admin/plans/{id}/activate` | Tarif aktivieren |
+| `POST` | `/admin/plans/{id}/deactivate` | Tarif deaktivieren |
+
+**POST /admin/plans – Request:**
+
+| Feld | Typ | Pflicht | Beschreibung |
+|------|-----|---------|--------------|
+| `code` | string | Ja | Eindeutiger Code (2-32 Zeichen, A-Z, 0-9, _) |
+| `name` | string | Ja | Anzeigename |
+| `interval` | string | Nein | `ONE_TIME`, `MONTHLY`, `YEARLY`, `NONE` (default) |
+| `price_cents` | int | Nein | Preis in Cent |
+| `credits_included` | int | Nein | Inkludierte Credits (default: 0) |
+| `allowed_procedures` | string[] | Nein | Erlaubte Verfahren: `IZA`, `IAA`, `IPK` |
+
+**Response (Plan):**
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| `id` | string | Plan-ID |
+| `code` | string | Eindeutiger Code |
+| `name` | string | Anzeigename |
+| `is_active` | boolean | Aktiv-Status |
+| `interval` | string | Abrechnungsintervall |
+| `price_cents` | int | Preis in Cent |
+| `currency` | string | Währung (EUR) |
+| `credits_included` | int | Inkludierte Credits |
+| `allowed_procedures` | string[] | Erlaubte Verfahren |
+| `created_at` | datetime | Erstellungszeitpunkt |
+| `updated_at` | datetime | Letzte Änderung |
+
+---
+
+## Zugriffskontrolle
+
+Der Admin-Bereich verwendet rollenbasierte Zugriffskontrolle (RBAC):
+
+| Rolle | Zugriff |
+|-------|---------|
+| `SYSTEM_ADMIN` | Vollzugriff auf alle Admin-Funktionen |
+| `ADMIN` | Mandanten-Admin (kein Zugriff auf `/admin`) |
+| `USER` | Kein Zugriff auf Admin-Bereich |
+| `OWNER` | Mandanten-Inhaber (kein Zugriff auf `/admin`) |
+
+### Fehler bei fehlendem Zugriff
+
+| Code | Beschreibung |
+|------|--------------|
+| `401` | Nicht authentifiziert |
+| `403` | Keine SYSTEM_ADMIN-Berechtigung |
+
+---
+
+## Sicherheitshinweise
+
+1. **Nur autorisierte Benutzer** sollten SYSTEM_ADMIN-Rechte erhalten
+2. **Credit-Gutschriften** werden im Ledger protokolliert
+3. **Nutzer-Deaktivierung** blockiert sofort alle Logins
+4. **Tarif-Änderungen** gelten sofort für den Mandanten
+
+---
+
+*Zuletzt aktualisiert: Sprint 4 (B1: Tarifmodell erweitert)*

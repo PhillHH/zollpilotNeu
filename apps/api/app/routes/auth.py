@@ -100,6 +100,7 @@ def _set_session_cookie(response: Response, token: str, settings: Settings) -> N
         samesite="lax",
         secure=settings.session_cookie_secure,
         max_age=settings.session_ttl_minutes * 60,
+        path="/",  # Explicit root path for cross-route availability
         domain=settings.session_cookie_domain,
     )
 

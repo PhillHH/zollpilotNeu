@@ -9,9 +9,10 @@ import { Badge } from "../../../design-system/primitives/Badge";
 import { Alert } from "../../../design-system/primitives/Alert";
 import {
   admin,
-  type TenantSummary,
+  type TenantDetail,
   type LedgerEntry,
   type Plan,
+  type UserSummary,
 } from "../../../lib/api/client";
 
 type TenantDetailClientProps = {
@@ -22,7 +23,7 @@ type TenantDetailClientProps = {
  * Tenant Detail Client – Mandantendetails mit Guthaben-Verwaltung
  */
 export function TenantDetailClient({ tenantId }: TenantDetailClientProps) {
-  const [tenant, setTenant] = useState<TenantSummary | null>(null);
+  const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,22 +41,16 @@ export function TenantDetailClient({ tenantId }: TenantDetailClientProps) {
 
   const loadData = useCallback(async () => {
     try {
-      const [tenantsRes, plansRes, ledgerRes] = await Promise.all([
-        admin.tenants.list(),
+      const [tenantRes, plansRes, ledgerRes] = await Promise.all([
+        admin.tenants.get(tenantId),
         admin.plans.list(),
         admin.tenants.ledger(tenantId),
       ]);
 
-      const t = tenantsRes.data.find((x) => x.id === tenantId);
-      if (!t) {
-        setError("Mandant nicht gefunden.");
-        return;
-      }
-
-      setTenant(t);
+      setTenant(tenantRes.data);
       setPlans(plansRes.data.filter((p) => p.is_active));
       setLedger(ledgerRes.data);
-      setSelectedPlan(t.plan_code || "");
+      setSelectedPlan(tenantRes.data.plan_code || "");
     } catch {
       setError("Daten konnten nicht geladen werden.");
     } finally {
@@ -267,6 +262,52 @@ export function TenantDetailClient({ tenantId }: TenantDetailClientProps) {
           </form>
         </Card>
       </div>
+
+      {/* Users List */}
+      <Card title="Nutzer" description={`${tenant.users.length} Nutzer im Mandanten`} padding="none">
+        {tenant.users.length === 0 ? (
+          <div className="empty-state">
+            <p>Keine Nutzer im Mandanten vorhanden.</p>
+          </div>
+        ) : (
+          <table className="users-table">
+            <thead>
+              <tr>
+                <th>E-Mail</th>
+                <th>Typ</th>
+                <th>Status</th>
+                <th>Registriert am</th>
+                <th>Aktionen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tenant.users.map((user) => (
+                <tr key={user.id}>
+                  <td className="user-email">{user.email}</td>
+                  <td>
+                    <Badge variant={user.user_type === "PRIVATE" ? "default" : "info"} size="sm">
+                      {user.user_type === "PRIVATE" ? "Privat" : "Unternehmen"}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Badge variant={user.status === "ACTIVE" ? "success" : "danger"} size="sm">
+                      {user.status === "ACTIVE" ? "Aktiv" : "Deaktiviert"}
+                    </Badge>
+                  </td>
+                  <td className="date-cell">{formatDate(user.created_at)}</td>
+                  <td>
+                    <Link href={`/admin/users/${user.id}`}>
+                      <Button variant="ghost" size="sm">
+                        Details
+                      </Button>
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
 
       {/* Ledger Table */}
       <Card title="Guthaben-Historie" description="Letzte 50 Einträge" padding="none">
@@ -483,6 +524,38 @@ export function TenantDetailClient({ tenantId }: TenantDetailClientProps) {
         .note-cell {
           font-size: var(--text-sm);
           color: var(--color-text-muted);
+        }
+
+        /* Users Table */
+        .users-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: var(--space-lg);
+        }
+
+        .users-table th,
+        .users-table td {
+          padding: var(--space-md);
+          text-align: left;
+          border-bottom: 1px solid var(--color-border-light);
+        }
+
+        .users-table th {
+          font-size: var(--text-xs);
+          font-weight: var(--font-semibold);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--color-text-muted);
+          background: var(--color-bg);
+        }
+
+        .users-table tbody tr:hover {
+          background: var(--color-border-light);
+        }
+
+        .user-email {
+          font-weight: var(--font-medium);
+          color: var(--color-text);
         }
 
         @media (max-width: 768px) {

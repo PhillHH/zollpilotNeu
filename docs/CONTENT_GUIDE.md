@@ -144,6 +144,31 @@ Bei Fragen zu Daten oder Verantwortung zusätzlich:
 
 > Die Richtigkeit der eingegebenen Daten liegt in Ihrer Verantwortung.
 
+#### FAQ – zentrale Seite
+
+**Seit Sprint 3 (P3p03_C5):** Alle FAQs werden auf einer zentralen Seite gebündelt.
+
+**Datei:** `apps/web/content/faq/index.mdx`
+
+**Struktur der zentralen FAQ:**
+
+| Abschnitt | Themen |
+|-----------|--------|
+| Grundverständnis | Was ZollPilot macht/nicht macht, Produktgrenzen |
+| Ablauf & Nutzung | Wie die Ausfüllhilfe funktioniert, Zeitaufwand |
+| Kosten & Alternativen | Paketdienst-Gebühren, wann Dienstleister |
+| Daten & Verantwortung | Speicherung, keine Übermittlung, Haftung |
+| Zielgruppe & Grenzen | Für wen geeignet/nicht geeignet, Verfahren |
+
+**Vorteile der zentralen FAQ:**
+
+- Nutzer finden alle Antworten an einem Ort
+- Bessere SEO durch gebündelte Inhalte
+- Einfachere Pflege und Aktualisierung
+- Konsistente Struktur und Tonalität
+
+**Migration:** Bestehende Einzel-FAQs bleiben vorerst erhalten, werden aber nicht mehr erweitert. Die zentrale FAQ ist der Haupteinstiegspunkt.
+
 ### Statische Seiten
 
 **Zweck**: Rechtliches, Über uns, Kontakt
@@ -412,6 +437,77 @@ Die technische SEO ist implementiert:
 **Robots.txt Regeln:**
 - Erlaubt: `/`, `/blog/*`, `/faq/*`
 - Blockiert: `/app/*`, `/admin/*`, `/api/*`
+
+---
+
+## Content-Cluster & interne Verlinkung
+
+> **Seit Sprint 3 (P3p04_C6):** Strukturierte Content-Architektur für SEO und spätere AI-Nutzbarkeit.
+
+### Die 7 Content-Cluster
+
+| # | Cluster | Beschreibung | Zielgruppe |
+|---|---------|--------------|------------|
+| 1 | **Grundlagen & Orientierung** | Einstieg: Was ist Zoll, wann brauche ich das | Anfänger |
+| 2 | **IZA in der Praxis** | Formular ausfüllen, Zolltarife, Zollamt | Aktive Anmelder |
+| 3 | **ATLAS & Zollsoftware** | Atlas-Bedienung, Login, Navigation | Atlas-Nutzer |
+| 4 | **Kosten, Zeit & Alternativen** | Gebühren, EUSt, Dienstleister-Vergleich | Entscheider |
+| 5 | **Fehler, Risiken & Rettung** | Abstürze, Backups, Hotline | Problemlöser |
+| 6 | **Hardware, Setup & Effizienz** | Multi-Monitor, Vorlagen, Kopierfunktion | Power-User |
+| 7 | **Sonderfälle & Ausland** | UK/Brexit, Währungen, Länder | Spezialfälle |
+
+### Hub-Seiten
+
+Jedes Cluster hat 1–2 Hub-Seiten, die als zentrale Anlaufstelle dienen:
+
+| Cluster | Hub-Seite(n) |
+|---------|--------------|
+| Übergreifend | FAQ (`/faq`) |
+| 1. Grundlagen | `was-ist-eine-zollanmeldung` |
+| 2. IZA | `ezt-online-zolltarif-suche-anleitung` |
+| 3. ATLAS | `atlas-zoll-software-anleitung-privatpersonen` |
+| 4. Kosten | `zollagent-kosten-nutzen-privatpersonen` |
+| 5. Fehler | `zoll-hotline-kurzanleitung-hilfe-anmeldung` |
+| 6. Setup | `multi-monitor-setup-zollanmeldung-effizienz` |
+| 7. Sonderfälle | `post-brexit-uk-einkauf-zoll-anmeldung` |
+
+### Verlinkungsregeln
+
+**Pflicht:**
+
+- Max. 3–5 interne Links pro Artikel
+- Hub-Artikel verlinken alle Cluster-Artikel
+- Cluster-Artikel verlinken zurück auf ihren Hub
+- Alle Grundlagen-Artikel verlinken zur FAQ
+
+**Verboten:**
+
+- Querverweise ohne inhaltlichen Bezug
+- Link-Ketten ohne Kontext (A → B → C)
+- Selbstreferenzen
+- Links zu Draft-Artikeln
+
+### Link-Matrix nach Cluster
+
+| Von Cluster | Verlinkt typischerweise zu |
+|-------------|---------------------------|
+| 1. Grundlagen | FAQ, Cluster 2, Cluster 4 |
+| 2. IZA | Cluster 1 (Hub), Cluster 3, Cluster 5 |
+| 3. ATLAS | Cluster 2, Cluster 5, Cluster 6 |
+| 4. Kosten | FAQ, Cluster 1 (Hub) |
+| 5. Fehler | Cluster 3, Cluster 2 |
+| 6. Setup | Cluster 3, Cluster 2 |
+| 7. Sonderfälle | Cluster 1 (Hub), Cluster 4 |
+
+### FAQ-Anbindung
+
+Die FAQ dient als:
+- **Grundlagen-Hub** für neue Nutzer
+- **Vertrauensanker** für Produktverständnis
+- **SEO-Bündelung** für Kernfragen
+
+**FAQ → Blog:** Weiterführende Links zu Detailartikeln
+**Blog → FAQ:** Rückverweis bei Produktbezug (Cluster 1 Pflicht)
 
 ---
 

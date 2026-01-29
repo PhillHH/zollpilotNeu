@@ -55,7 +55,9 @@ async function applySetCookies(setCookies: string[]): Promise<void> {
       domain?: string;
       expires?: Date;
       maxAge?: number;
-    } = {};
+    } = {
+      path: "/", // Default to root path to ensure cookie is available across all routes
+    };
 
     for (const attribute of attributes) {
       const [attrKeyRaw, attrValueRaw] = attribute.split("=");

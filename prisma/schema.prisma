@@ -8,19 +8,34 @@ datasource db {
 }
 
 model User {
-  id             String              @id @default(uuid())
-  email          String              @unique
-  password_hash  String
-  created_at     DateTime            @default(now())
-  memberships    Membership[]
-  sessions       Session[]
-  created_cases  Case[]
-  credit_entries CreditLedgerEntry[]
+  id              String              @id @default(uuid())
+  email           String              @unique
+  password_hash   String
+  user_type       UserType            @default(PRIVATE)
+  status          UserStatus          @default(ACTIVE)
+  created_at      DateTime            @default(now())
+  last_login_at   DateTime?
+  memberships     Membership[]
+  sessions        Session[]
+  created_cases   Case[]
+  credit_entries  CreditLedgerEntry[]
+  events          UserEvent[]
+}
+
+enum UserType {
+  PRIVATE   // Privatnutzer ohne Unternehmen
+  BUSINESS  // Unternehmensnutzer mit Mandant
+}
+
+enum UserStatus {
+  ACTIVE    // Aktiver Nutzer
+  DISABLED  // Deaktivierter Nutzer
 }
 
 model Tenant {
   id                String       @id @default(uuid())
   name              String
+  type              TenantType   @default(BUSINESS)
   created_at        DateTime     @default(now())
   plan_id           String?
   plan_activated_at DateTime?
@@ -32,6 +47,11 @@ model Tenant {
   plan Plan? @relation(fields: [plan_id], references: [id])
 
   @@index([plan_id])
+  @@index([type])
+}
+
+enum TenantType {
+  BUSINESS  // Unternehmens-/Firmenmandant
 }
 
 model Membership {
@@ -53,6 +73,33 @@ model Session {
   created_at DateTime @default(now())
 
   user User @relation(fields: [user_id], references: [id])
+}
+
+// --- User Event Historie ---
+
+model UserEvent {
+  id            String         @id @default(uuid())
+  user_id       String
+  type          UserEventType
+  created_at    DateTime       @default(now())
+  metadata_json Json?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([type])
+  @@index([created_at])
+}
+
+enum UserEventType {
+  REGISTERED     // Nutzer hat sich registriert
+  LOGIN          // Nutzer hat sich eingeloggt
+  LOGOUT         // Nutzer hat sich ausgeloggt
+  PASSWORD_RESET // Passwort wurde zurückgesetzt
+  STATUS_CHANGED // Status wurde geändert (active/disabled)
+  PURCHASE       // Nutzer hat einen Kauf getätigt
+  CREDIT_USED    // Credits wurden verwendet (z.B. PDF-Export)
+  PLAN_CHANGED   // Tarif wurde geändert
 }
 
 enum Role {
@@ -182,16 +229,18 @@ enum FieldType {
 // --- Billing Models ---
 
 model Plan {
-  id          String       @id @default(uuid())
-  code        String       @unique
-  name        String
-  is_active   Boolean      @default(true)
-  price_cents Int?
-  currency    String       @default("EUR")
-  interval    PlanInterval @default(NONE)
-  created_at  DateTime     @default(now())
-  updated_at  DateTime     @updatedAt
-  tenants     Tenant[]
+  id                 String          @id @default(uuid())
+  code               String          @unique
+  name               String
+  is_active          Boolean         @default(true)
+  price_cents        Int?
+  currency           String          @default("EUR")
+  interval           PlanInterval    @default(NONE)
+  credits_included   Int             @default(0)
+  allowed_procedures ProcedureCode[] @default([])
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  tenants            Tenant[]
 }
 
 enum PlanInterval {
@@ -199,6 +248,12 @@ enum PlanInterval {
   YEARLY
   MONTHLY
   NONE
+}
+
+enum ProcedureCode {
+  IZA  // Individuelle Zollanmeldung
+  IAA  // Import-/Ausfuhrabfertigung
+  IPK  // Importkontrolle
 }
 
 model TenantCreditBalance {

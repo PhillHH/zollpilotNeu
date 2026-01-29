@@ -94,9 +94,10 @@ export function TenantsClient() {
             <thead>
               <tr>
                 <th>Mandant</th>
+                <th>Nutzer</th>
+                <th>Erstellt am</th>
                 <th>Tarif</th>
                 <th>Guthaben</th>
-                <th>Erstellt am</th>
                 <th>Aktionen</th>
               </tr>
             </thead>
@@ -104,6 +105,10 @@ export function TenantsClient() {
               {tenants.map((tenant) => (
                 <tr key={tenant.id}>
                   <td className="tenant-name">{tenant.name}</td>
+                  <td className="user-count-cell">
+                    <span className="user-count-value">{tenant.user_count}</span>
+                  </td>
+                  <td className="date-cell">{formatDate(tenant.created_at)}</td>
                   <td>
                     {tenant.plan_code ? (
                       <Badge variant="info">{tenant.plan_code}</Badge>
@@ -116,7 +121,6 @@ export function TenantsClient() {
                       {tenant.credits_balance}
                     </span>
                   </td>
-                  <td className="date-cell">{formatDate(tenant.created_at)}</td>
                   <td>
                     <Link href={`/admin/tenants/${tenant.id}`}>
                       <Button variant="ghost" size="sm">
@@ -186,6 +190,23 @@ export function TenantsClient() {
           color: var(--color-text-light);
           font-style: italic;
           font-size: var(--text-sm);
+        }
+
+        .user-count-cell {
+          text-align: center;
+        }
+
+        .user-count-value {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 28px;
+          padding: var(--space-xs) var(--space-sm);
+          background: var(--color-border-light);
+          border-radius: var(--radius-full);
+          font-size: var(--text-sm);
+          font-weight: var(--font-medium);
+          color: var(--color-text);
         }
 
         .credits-cell {

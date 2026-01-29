@@ -257,6 +257,54 @@ See `docs/AUTH.md` for complete role documentation.
 
 ## Data Models
 
+### User & Tenant Model
+
+Das Datenmodell unterscheidet zwischen Privat- und Unternehmensnutzern.
+
+**User**:
+- id, email, password_hash
+- user_type: PRIVATE | BUSINESS
+- status: ACTIVE | DISABLED
+- created_at, last_login_at
+
+**UserType**:
+- `PRIVATE`: Privatnutzer ohne Unternehmensbezug
+- `BUSINESS`: Unternehmensnutzer mit Mandantenzugehörigkeit
+
+**UserStatus**:
+- `ACTIVE`: Aktiver Nutzer (kann sich einloggen)
+- `DISABLED`: Deaktivierter Nutzer (Login gesperrt)
+
+**Tenant** (Mandant):
+- id, name, type
+- plan_id, plan_activated_at
+- created_at
+
+**TenantType**:
+- `BUSINESS`: Unternehmens-/Firmenmandant
+
+**Beziehungen**:
+- BUSINESS-User gehören zu genau einem Tenant (via Membership)
+- PRIVATE-User können ohne Tenant existieren
+- Ein Tenant kann mehrere User haben
+
+**UserEvent** (Historie):
+- id, user_id, type, created_at, metadata_json
+
+**UserEventType**:
+| Event | Beschreibung |
+|-------|--------------|
+| `REGISTERED` | Nutzer hat sich registriert |
+| `LOGIN` | Erfolgreicher Login |
+| `LOGOUT` | Logout durchgeführt |
+| `PASSWORD_RESET` | Passwort wurde zurückgesetzt |
+| `STATUS_CHANGED` | Status geändert (ACTIVE ↔ DISABLED) |
+| `PURCHASE` | Kauf getätigt |
+| `CREDIT_USED` | Credits verwendet (z.B. PDF-Export) |
+| `PLAN_CHANGED` | Tarif wurde geändert |
+
+Die UserEvent-Tabelle protokolliert wichtige Nutzeraktionen für Audit, Analyse und Nachvollziehbarkeit. Alle Events sind read-only und werden über die Admin-Historie (`/admin/events`) einsehbar.
+
 ### Case + CaseField Architecture
 
 The Case model represents a customs/import process container. CaseField provides

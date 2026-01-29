@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 const API_BASE_URL =
   process.env.API_BASE_URL ??
   "http://localhost:8000";
@@ -16,8 +18,9 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
     headers.set("X-Contract-Version", "1");
   }
 
-  // Let fetch compute correct Content-Length.
+  // Remove headers that shouldn't be forwarded
   headers.delete("content-length");
+  headers.delete("host");
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;
@@ -28,25 +31,24 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
     body,
   });
 
-  const responseHeaders = new Headers(upstreamResponse.headers);
-  const rawSetCookie = upstreamResponse.headers.get("set-cookie");
-  const setCookies =
-    typeof upstreamResponse.headers.getSetCookie === "function"
-      ? upstreamResponse.headers.getSetCookie()
-      : rawSetCookie
-        ? [rawSetCookie]
-        : [];
-  if (setCookies.length > 0) {
-    responseHeaders.delete("set-cookie");
-    for (const cookie of setCookies) {
-      responseHeaders.append("set-cookie", cookie);
-    }
-  }
+  // Get response body
+  const responseBody = await upstreamResponse.arrayBuffer();
 
-  return new Response(upstreamResponse.body, {
+  // Create NextResponse which properly handles Set-Cookie
+  const response = new NextResponse(responseBody, {
     status: upstreamResponse.status,
-    headers: responseHeaders,
+    statusText: upstreamResponse.statusText,
   });
+
+  // Copy all headers from upstream response
+  upstreamResponse.headers.forEach((value, key) => {
+    // Skip headers that NextResponse handles specially
+    if (key.toLowerCase() !== "transfer-encoding") {
+      response.headers.set(key, value);
+    }
+  });
+
+  return response;
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -72,5 +74,3 @@ export async function DELETE(request: Request, context: RouteContext) {
 export async function OPTIONS() {
   return new Response(null, { status: 204 });
 }
-
-

@@ -49,9 +49,15 @@ function AdminHeader({ isActive }: { isActive: (path: string) => boolean }) {
         <nav className="header-nav">
           <Link
             href="/admin"
-            className={`nav-link ${isActive("/admin") && !isActive("/admin/tenants") && !isActive("/admin/plans") ? "nav-link--active" : ""}`}
+            className={`nav-link ${isActive("/admin") && !isActive("/admin/tenants") && !isActive("/admin/users") && !isActive("/admin/plans") && !isActive("/admin/events") ? "nav-link--active" : ""}`}
           >
             Übersicht
+          </Link>
+          <Link
+            href="/admin/users"
+            className={`nav-link ${isActive("/admin/users") ? "nav-link--active" : ""}`}
+          >
+            Nutzer
           </Link>
           <Link
             href="/admin/tenants"
@@ -64,6 +70,12 @@ function AdminHeader({ isActive }: { isActive: (path: string) => boolean }) {
             className={`nav-link ${isActive("/admin/plans") ? "nav-link--active" : ""}`}
           >
             Tarife
+          </Link>
+          <Link
+            href="/admin/events"
+            className={`nav-link ${isActive("/admin/events") ? "nav-link--active" : ""}`}
+          >
+            Historie
           </Link>
         </nav>
 

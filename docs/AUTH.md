@@ -1,12 +1,35 @@
 # Authentication & Authorization
 
-> **Sprint 2** – Role-based access control with clear separation of User and Admin contexts.
+> **Sprint 2+** – Role-based access control with clear separation of User and Admin contexts.
+> **Update Sprint X** – User-Typen (PRIVATE/BUSINESS) und Tenant-Zuordnung.
 
 ---
 
 ## Overview
 
 ZollPilot implements session-based authentication with HTTP-only cookies and role-based access control (RBAC).
+
+## User-Typen
+
+### PRIVATE vs. BUSINESS
+
+| Typ | Beschreibung | Tenant-Pflicht |
+|-----|--------------|----------------|
+| `PRIVATE` | Privatnutzer ohne Unternehmensbezug | Nein |
+| `BUSINESS` | Unternehmensnutzer | Ja (genau ein Tenant) |
+
+### User-Status
+
+| Status | Beschreibung | Login erlaubt |
+|--------|--------------|---------------|
+| `ACTIVE` | Aktiver Nutzer | Ja |
+| `DISABLED` | Deaktivierter Nutzer | Nein |
+
+### Tenant-Zuordnung
+
+- **PRIVATE User**: Können ohne Tenant-Membership existieren (oder mit persönlichem Tenant)
+- **BUSINESS User**: Müssen genau einem Tenant zugeordnet sein
+- Validierung erfolgt bei der Registrierung und Tenant-Zuweisung
 
 ## Role Model
 

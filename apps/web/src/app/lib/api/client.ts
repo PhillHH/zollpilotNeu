@@ -1,5 +1,3 @@
-import { backendBinary, backendJson, type BackendRequestInit } from "../actions/backend";
-
 export type ApiError = {
   code: string;
   message: string;
@@ -14,17 +12,6 @@ function getBaseUrl(): string {
   }
 
   return process.env.API_BASE_URL ?? "http://localhost:8000";
-}
-
-function toBackendInit(init: RequestInit = {}): BackendRequestInit {
-  const headers = new Headers(init.headers);
-  const body = typeof init.body === "string" ? init.body : undefined;
-
-  return {
-    method: init.method,
-    headers: Object.fromEntries(headers.entries()),
-    body
-  };
 }
 
 async function apiFetch(
@@ -46,30 +33,8 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  if (typeof window !== "undefined") {
-    const result = await backendJson(path, toBackendInit(init));
-    if (!result.ok) {
-      let payload: unknown = null;
-      try {
-        payload = JSON.parse(result.body);
-      } catch {
-        payload = null;
-      }
-
-      const errorPayload = payload as { error?: { code?: string; message?: string; details?: unknown }; requestId?: string } | null;
-      const error = errorPayload?.error ?? {};
-      throw {
-        code: error.code ?? "UNKNOWN_ERROR",
-        message: error.message ?? "Request failed.",
-        details: error.details,
-        requestId: errorPayload?.requestId ?? result.requestId,
-        status: result.status
-      } satisfies ApiError;
-    }
-
-    return JSON.parse(result.body) as T;
-  }
-
+  // Always use apiFetch - in browser it goes through /api/backend proxy
+  // which properly handles Set-Cookie headers
   const response = await apiFetch(path, init);
 
   const requestId = response.headers.get("X-Request-Id");
@@ -246,46 +211,6 @@ export const cases = {
    * Requires SUBMITTED status and 1 credit.
    */
   exportPdf: async (id: string): Promise<{ blob: Blob; filename: string }> => {
-    if (typeof window !== "undefined") {
-      const result = await backendBinary(`/cases/${id}/pdf`, {
-        method: "POST"
-      });
-
-      if (!result.ok) {
-        let payload: unknown = null;
-        try {
-          payload = JSON.parse(atob(result.bodyBase64));
-        } catch {
-          payload = null;
-        }
-
-        const errorPayload = payload as { error?: { code?: string; message?: string; details?: unknown }; requestId?: string } | null;
-        const error = errorPayload?.error ?? {};
-        throw {
-          code: error.code ?? "UNKNOWN_ERROR",
-          message: error.message ?? "PDF export failed.",
-          details: error.details,
-          requestId: errorPayload?.requestId ?? result.requestId,
-          status: result.status
-        } satisfies ApiError;
-      }
-
-      const bytes = Uint8Array.from(atob(result.bodyBase64), (char) => char.charCodeAt(0));
-      const blob = new Blob([bytes], {
-        type: result.contentType ?? "application/pdf"
-      });
-      let filename = "ZollPilot_Export.pdf";
-
-      if (result.contentDisposition) {
-        const match = result.contentDisposition.match(/filename="(.+)"/);
-        if (match) {
-          filename = match[1];
-        }
-      }
-
-      return { blob, filename };
-    }
-
     const response = await apiFetch(`/cases/${id}/pdf`, {
       method: "POST"
     });
@@ -482,6 +407,8 @@ export const procedures = {
 
 // --- Admin Types ---
 
+export type ProcedureCode = "IZA" | "IAA" | "IPK";
+
 export type Plan = {
   id: string;
   code: string;
@@ -490,6 +417,8 @@ export type Plan = {
   interval: string;
   price_cents: number | null;
   currency: string;
+  credits_included: number;
+  allowed_procedures: ProcedureCode[];
   created_at: string;
   updated_at: string;
 };
@@ -499,7 +428,21 @@ export type TenantSummary = {
   name: string;
   plan_code: string | null;
   credits_balance: number;
+  user_count: number;
   created_at: string;
+};
+
+// --- Admin User Types ---
+
+export type UserSummary = {
+  id: string;
+  email: string;
+  user_type: "PRIVATE" | "BUSINESS";
+  status: "ACTIVE" | "DISABLED";
+  tenant_id: string | null;
+  tenant_name: string | null;
+  created_at: string;
+  last_login_at: string | null;
 };
 
 export type LedgerEntry = {
@@ -511,9 +454,62 @@ export type LedgerEntry = {
   created_at: string;
 };
 
+export type UserEvent = {
+  id: string;
+  type: string;
+  created_at: string;
+  metadata_json: unknown;
+};
+
+export type UserDetail = {
+  id: string;
+  email: string;
+  user_type: "PRIVATE" | "BUSINESS";
+  status: "ACTIVE" | "DISABLED";
+  tenant_id: string | null;
+  tenant_name: string | null;
+  created_at: string;
+  last_login_at: string | null;
+  events: UserEvent[];
+};
+
+export type TenantDetail = {
+  id: string;
+  name: string;
+  type: string;
+  plan_code: string | null;
+  credits_balance: number;
+  user_count: number;
+  created_at: string;
+  users: UserSummary[];
+};
+
+export type EventListItem = {
+  id: string;
+  user_id: string;
+  user_email: string;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  type: string;
+  created_at: string;
+  metadata_json: unknown;
+};
+
+export type EventListParams = {
+  user_id?: string;
+  tenant_id?: string;
+  event_type?: string;
+  page?: number;
+  page_size?: number;
+};
+
 type PlanListResponse = { data: Plan[] };
 type PlanSingleResponse = { data: Plan };
 type TenantListResponse = { data: TenantSummary[] };
+type TenantDetailResponse = { data: TenantDetail };
+type UserListResponse = { data: UserSummary[] };
+type UserDetailResponse = { data: UserDetail };
+type EventListResponse = { data: EventListItem[]; total: number; page: number; page_size: number };
 type LedgerListResponse = { data: LedgerEntry[] };
 type CreditsBalanceResponse = { data: { balance: number } };
 
@@ -528,7 +524,14 @@ export const admin = {
       }),
 
     create: (
-      data: { code: string; name: string; interval?: string; price_cents?: number },
+      data: {
+        code: string;
+        name: string;
+        interval?: string;
+        price_cents?: number;
+        credits_included?: number;
+        allowed_procedures?: ProcedureCode[];
+      },
       init?: RequestInit
     ) =>
       apiRequest<PlanSingleResponse>("/admin/plans", {
@@ -541,7 +544,13 @@ export const admin = {
 
     patch: (
       id: string,
-      data: { name?: string; price_cents?: number; interval?: string },
+      data: {
+        name?: string;
+        price_cents?: number;
+        interval?: string;
+        credits_included?: number;
+        allowed_procedures?: ProcedureCode[];
+      },
       init?: RequestInit
     ) =>
       apiRequest<PlanSingleResponse>(`/admin/plans/${id}`, {
@@ -574,6 +583,12 @@ export const admin = {
         ...init
       }),
 
+    get: (tenantId: string, init?: RequestInit) =>
+      apiRequest<TenantDetailResponse>(`/admin/tenants/${tenantId}`, {
+        credentials: "include",
+        ...init
+      }),
+
     setPlan: (tenantId: string, planCode: string, init?: RequestInit) =>
       apiRequest<{ data: TenantSummary }>(`/admin/tenants/${tenantId}/plan`, {
         method: "POST",
@@ -602,6 +617,36 @@ export const admin = {
         credentials: "include",
         ...init
       })
+  },
+
+  users: {
+    list: (init?: RequestInit) =>
+      apiRequest<UserListResponse>("/admin/users", {
+        credentials: "include",
+        ...init
+      }),
+
+    get: (userId: string, init?: RequestInit) =>
+      apiRequest<UserDetailResponse>(`/admin/users/${userId}`, {
+        credentials: "include",
+        ...init
+      })
+  },
+
+  events: {
+    list: (params: EventListParams = {}, init?: RequestInit) => {
+      const searchParams = new URLSearchParams();
+      if (params.user_id) searchParams.set("user_id", params.user_id);
+      if (params.tenant_id) searchParams.set("tenant_id", params.tenant_id);
+      if (params.event_type) searchParams.set("event_type", params.event_type);
+      if (params.page) searchParams.set("page", String(params.page));
+      if (params.page_size) searchParams.set("page_size", String(params.page_size));
+      const query = searchParams.toString();
+      return apiRequest<EventListResponse>(`/admin/events${query ? `?${query}` : ""}`, {
+        credentials: "include",
+        ...init
+      });
+    }
   }
 };
 
