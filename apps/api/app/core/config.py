@@ -70,13 +70,14 @@ def validate_settings(settings: Settings) -> list[str]:
     # Critical validations
     if not settings.session_secret:
         errors.append("SESSION_SECRET is required")
-    elif len(settings.session_secret) < 32:
-        warnings.append("SESSION_SECRET should be at least 32 characters")
     elif settings.session_secret == "change-me":
+        # Check for default value BEFORE length check (change-me is only 9 chars)
         if settings.environment == "production":
             errors.append("SESSION_SECRET must not be 'change-me' in production")
         else:
             warnings.append("SESSION_SECRET is using default value")
+    elif len(settings.session_secret) < 32:
+        warnings.append("SESSION_SECRET should be at least 32 characters")
     
     if not settings.database_url:
         errors.append("DATABASE_URL is required")
