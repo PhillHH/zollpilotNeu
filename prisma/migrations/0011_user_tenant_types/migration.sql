@@ -50,8 +50,8 @@ CREATE INDEX "Tenant_type_idx" ON "Tenant"("type");
 -- ============================================
 
 CREATE TABLE "UserEvent" (
-    "id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "user_id" UUID NOT NULL,
     "type" "UserEventType" NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "metadata_json" JSONB,
@@ -78,7 +78,7 @@ CREATE INDEX "UserEvent_created_at_idx" ON "UserEvent"("created_at");
 -- Optional: Initiale REGISTERED Events für bestehende User erstellen
 INSERT INTO "UserEvent" ("id", "user_id", "type", "created_at", "metadata_json")
 SELECT
-    gen_random_uuid()::text,
+    gen_random_uuid(),
     "id",
     'REGISTERED'::"UserEventType",
     "created_at",
