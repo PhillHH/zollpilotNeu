@@ -69,6 +69,11 @@ function AppHeader({
   isActive: (path: string) => boolean;
   canAccessAdmin: boolean;
 }) {
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
+
   return (
     <header className="app-header">
       <div className="header-container">
@@ -107,9 +112,9 @@ function AppHeader({
               Admin
             </Link>
           )}
-          <Link href="/api/auth/logout" className="logout-link">
+          <button onClick={handleLogout} className="logout-link">
             Abmelden
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -200,6 +205,11 @@ function AppHeader({
         }
 
         .app-header :global(.logout-link) {
+          background: none;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          font-family: inherit;
           font-size: var(--text-sm);
           color: var(--color-text-muted);
           text-decoration: none;

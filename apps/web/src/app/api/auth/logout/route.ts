@@ -6,11 +6,27 @@ const SESSION_COOKIE_NAME =
 const API_BASE_URL =
   process.env.API_BASE_URL ?? "http://localhost:8000";
 
+/**
+ * GET: Safe redirect only - NO side effects
+ * This prevents accidental logout from Link prefetching
+ */
 export async function GET() {
+  return NextResponse.redirect(
+    new URL("/login", process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000")
+  );
+}
+
+/**
+ * POST: Actual logout with side effects
+ * - Calls backend logout
+ * - Deletes session cookie
+ * - Returns JSON response (frontend handles redirect)
+ */
+export async function POST() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
 
-  // Backend-Logout aufrufen, falls Session existiert
+  // Call backend logout if session exists
   if (sessionCookie?.value) {
     try {
       await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -21,18 +37,12 @@ export async function GET() {
         },
       });
     } catch {
-      // Fehler beim Backend-Logout ignorieren - Cookie wird trotzdem gelöscht
+      // Ignore backend logout errors - cookie will be deleted anyway
     }
   }
 
-  // Session-Cookie löschen
+  // Delete session cookie
   cookieStore.delete(SESSION_COOKIE_NAME);
 
-  // Zur Login-Seite weiterleiten
-  return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"));
-}
-
-export async function POST() {
-  // POST auch unterstützen für bessere Kompatibilität
-  return GET();
+  return NextResponse.json({ success: true });
 }
