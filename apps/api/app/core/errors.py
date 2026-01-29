@@ -79,8 +79,8 @@ ERROR_STATUS_MAP: dict[ErrorCode, int] = {
     ErrorCode.CASE_ARCHIVED: status.HTTP_409_CONFLICT,
     ErrorCode.NO_SNAPSHOT: status.HTTP_409_CONFLICT,
     ErrorCode.EMAIL_IN_USE: status.HTTP_409_CONFLICT,
-    # 413 Payload Too Large
-    ErrorCode.PAYLOAD_TOO_LARGE: status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+    # 413 Payload Too Large (HTTP_413_REQUEST_ENTITY_TOO_LARGE is deprecated)
+    ErrorCode.PAYLOAD_TOO_LARGE: 413,
     # 429 Too Many Requests
     ErrorCode.RATE_LIMITED: status.HTTP_429_TOO_MANY_REQUESTS,
     # 500 Internal Server Error
