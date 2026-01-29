@@ -202,3 +202,39 @@ Browser
 - [Node.js Headers API](https://nodejs.org/api/globals.html#class-headers)
 - [Fetch Standard: Forbidden Response Header Names](https://fetch.spec.whatwg.org/#forbidden-response-header-name)
 - [Next.js Route Handlers](https://nextjs.org/docs/app/building-your-application/routing/route-handlers)
+
+---
+
+## Zusätzliche Bugfixes (Januar 2026)
+
+### Config Validation Bug: SESSION_SECRET "change-me" Check
+
+**Problem:** Der Check für das Default-Secret `"change-me"` wurde nie ausgeführt, weil der Längen-Check zuerst kam.
+
+**Datei:** `apps/api/app/core/config.py`
+
+**Ursache:**
+```python
+# FALSCH - "change-me" hat nur 9 Zeichen, also greift len() < 32 zuerst!
+if not settings.session_secret:
+    errors.append("SESSION_SECRET is required")
+elif len(settings.session_secret) < 32:  # <- wird bei "change-me" ausgelöst
+    warnings.append("...")
+elif settings.session_secret == "change-me":  # <- wird NIE erreicht!
+    ...
+```
+
+**Lösung:** Den `"change-me"` Check VOR den Längen-Check setzen:
+```python
+if not settings.session_secret:
+    errors.append("SESSION_SECRET is required")
+elif settings.session_secret == "change-me":  # <- Jetzt zuerst!
+    if settings.environment == "production":
+        errors.append("SESSION_SECRET must not be 'change-me' in production")
+    else:
+        warnings.append("SESSION_SECRET is using default value")
+elif len(settings.session_secret) < 32:
+    warnings.append("...")
+```
+
+**Test:** `pytest tests/test_config.py::TestValidateSettings::test_default_session_secret_in_production_raises_error`
