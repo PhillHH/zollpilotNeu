@@ -8,6 +8,18 @@ type RouteContext = {
   params: { path: string[] };
 };
 
+/**
+ * Headers that should not be forwarded from the upstream response.
+ * - transfer-encoding: Handled by the runtime
+ * - content-encoding: Body is already decoded by fetch()
+ * - content-length: Will be recalculated for the new response
+ */
+const SKIP_RESPONSE_HEADERS = new Set([
+  "transfer-encoding",
+  "content-encoding",
+  "content-length",
+]);
+
 async function proxy(request: Request, { params }: RouteContext): Promise<Response> {
   const targetPath = params.path.join("/");
   const url = new URL(request.url);
@@ -18,7 +30,7 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
     headers.set("X-Contract-Version", "1");
   }
 
-  // Remove headers that shouldn't be forwarded
+  // Remove headers that shouldn't be forwarded to upstream
   headers.delete("content-length");
   headers.delete("host");
 
@@ -34,19 +46,33 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
   // Get response body
   const responseBody = await upstreamResponse.arrayBuffer();
 
-  // Create NextResponse which properly handles Set-Cookie
+  // Create NextResponse
   const response = new NextResponse(responseBody, {
     status: upstreamResponse.status,
     statusText: upstreamResponse.statusText,
   });
 
-  // Copy all headers from upstream response
+  // Copy headers from upstream response (except special ones)
+  // IMPORTANT: Headers.forEach() does NOT properly iterate Set-Cookie headers!
+  // It either skips them entirely or combines multiple cookies incorrectly.
   upstreamResponse.headers.forEach((value, key) => {
-    // Skip headers that NextResponse handles specially
-    if (key.toLowerCase() !== "transfer-encoding") {
+    const lowerKey = key.toLowerCase();
+    if (!SKIP_RESPONSE_HEADERS.has(lowerKey) && lowerKey !== "set-cookie") {
       response.headers.set(key, value);
     }
   });
+
+  // Handle Set-Cookie headers explicitly using getSetCookie()
+  // This is the ONLY reliable way to forward cookies in Node.js 18+
+  // because Set-Cookie is a "forbidden response-header name" that gets
+  // special treatment in the Fetch API.
+  const setCookieHeaders = upstreamResponse.headers.getSetCookie();
+  if (setCookieHeaders && setCookieHeaders.length > 0) {
+    for (const cookie of setCookieHeaders) {
+      // Use append() not set() - each Set-Cookie must be a separate header
+      response.headers.append("Set-Cookie", cookie);
+    }
+  }
 
   return response;
 }
