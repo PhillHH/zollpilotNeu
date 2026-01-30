@@ -13,7 +13,7 @@ export default function AdminPage() {
       <header className="admin-header">
         <h1 className="admin-title">Administration</h1>
         <p className="admin-subtitle">
-          Verwalten Sie Mandanten, Tarife und Guthaben.
+          Verwalten Sie Mandanten, Tarife, Guthaben und Inhalte.
         </p>
       </header>
 
@@ -35,6 +35,26 @@ export default function AdminPage() {
             <h2 className="admin-card-title">Tarife</h2>
             <p className="admin-card-description">
               Verwalten Sie Abonnement-Tarife und Preisgestaltung.
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/admin/content/blog" className="admin-link">
+          <Card hoverable padding="lg" className="admin-card">
+            <div className="admin-card-icon">📝</div>
+            <h2 className="admin-card-title">Blog</h2>
+            <p className="admin-card-description">
+              Verwalten Sie Blog-Artikel und Veröffentlichungen.
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/admin/content/faq" className="admin-link">
+          <Card hoverable padding="lg" className="admin-card">
+            <div className="admin-card-icon">❓</div>
+            <h2 className="admin-card-title">FAQ</h2>
+            <p className="admin-card-description">
+              Verwalten Sie häufig gestellte Fragen und Antworten.
             </p>
           </Card>
         </Link>

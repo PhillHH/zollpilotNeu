@@ -18,6 +18,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.session import SessionMiddleware
 from app.routes.admin import router as admin_router
+from app.routes.admin_content import router as admin_content_router
 from app.routes.auth import router as auth_router
 from app.routes.billing import router as billing_router
 from app.routes.cases import router as cases_router
@@ -176,6 +177,7 @@ def create_app() -> FastAPI:
     app.include_router(procedures_router)
     app.include_router(profile_router)
     app.include_router(admin_router)
+    app.include_router(admin_content_router)
     return app
 
 

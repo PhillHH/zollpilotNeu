@@ -210,6 +210,29 @@ Die `AdminShell`-Komponente (`apps/web/src/app/admin/components/AdminShell.tsx`)
 - Code, Name, Intervall, Preis
 - Labels über Inputs, Hilfetexte dezent
 
+### Content Admin (`/admin/content/*`)
+
+Der Content-Admin-Bereich ermöglicht die Verwaltung von Blog-Artikeln und FAQ-Einträgen.
+
+**Zugriff:** EDITOR, ADMIN, OWNER, SYSTEM_ADMIN (Role ≥ EDITOR)
+
+**Blog (`/admin/content/blog`):**
+- **Liste**: Alle Artikel mit Status-Filter (Alle/Entwürfe/Veröffentlicht)
+- **Editor**: Titel, Slug, Excerpt, MDX-Inhalt, SEO-Metadaten
+- **Actions**: Speichern, Veröffentlichen, Zurückziehen, Löschen
+
+**FAQ (`/admin/content/faq`):**
+- **Liste**: Alle Einträge mit Status-Filter und Kategorie-Anzeige
+- **Editor**: Frage, Antwort (MDX), Kategorie, Reihenfolge
+- **Actions**: Speichern, Veröffentlichen, Zurückziehen, Löschen
+
+**Draft/Publish Workflow:**
+- Neue Inhalte starten als DRAFT
+- Veröffentlichen setzt Status auf PUBLISHED und published_at
+- Zurückziehen setzt Status auf DRAFT
+
+Siehe `docs/ADMIN_CONTENT.md` für Details.
+
 ### Verwendete Primitives
 
 Alle App-Komponenten nutzen die Design-System-Primitives:
@@ -232,8 +255,9 @@ Alle App-Komponenten nutzen die Design-System-Primitives:
 ## RBAC
 
 - RBAC is enforced exclusively in the backend.
-- Role hierarchy: `SYSTEM_ADMIN > OWNER > ADMIN > USER`
-- **SYSTEM_ADMIN**: ZollPilot internal, full system access (plans, all tenants)
+- Role hierarchy: `SYSTEM_ADMIN > OWNER > ADMIN > EDITOR > USER`
+- **SYSTEM_ADMIN**: ZollPilot internal, full system access (plans, all tenants, content)
+- **EDITOR**: Content management only (blog, FAQ), no system admin access
 - **OWNER/ADMIN/USER**: Tenant-scoped access only
 
 ### User vs. Admin Separation
@@ -241,7 +265,8 @@ Alle App-Komponenten nutzen die Design-System-Primitives:
 | Context | Routes | Roles |
 |---------|--------|-------|
 | User | `/app/*` | All authenticated users |
-| Admin | `/admin/*` | SYSTEM_ADMIN only |
+| Content Admin | `/admin/content/*` | EDITOR, ADMIN, OWNER, SYSTEM_ADMIN |
+| System Admin | `/admin/*` (except content) | SYSTEM_ADMIN only |
 
 Admin endpoints return 403 (not 401) for authenticated non-admin users.
 
