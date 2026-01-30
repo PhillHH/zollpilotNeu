@@ -211,17 +211,17 @@ describe("Dashboard", () => {
       });
     });
 
-    test("zeigt CTA 'Credits verwalten'", async () => {
+    test("zeigt CTA 'Kosten anzeigen'", async () => {
       mockCasesList.mockResolvedValue({ data: [] });
       mockBillingMe.mockResolvedValue({ data: mockBillingInfo });
 
       render(<AppDashboard />);
 
       await waitFor(() => {
-        expect(screen.getByText("Credits verwalten")).toBeInTheDocument();
+        expect(screen.getByText("Kosten anzeigen")).toBeInTheDocument();
       });
 
-      const link = screen.getByText("Credits verwalten").closest("a");
+      const link = screen.getByText("Kosten anzeigen").closest("a");
       expect(link).toHaveAttribute("href", "/app/billing");
     });
   });
@@ -392,7 +392,7 @@ describe("Dashboard", () => {
         expect(screen.getByText(/Keine Credits vorhanden/)).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Zur Abrechnung")).toBeInTheDocument();
+      expect(screen.getByText("Zu Kosten & Credits")).toBeInTheDocument();
     });
   });
 

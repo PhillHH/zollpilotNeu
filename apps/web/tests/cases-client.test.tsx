@@ -427,7 +427,7 @@ describe("CasesClient", () => {
       expect(text).not.toContain("bereit für den Zoll");
     });
 
-    test("zeigt 'Bereit' statt 'Eingereicht' für SUBMITTED Status", async () => {
+    test("zeigt 'Bereit' für SUBMITTED Status", async () => {
       mockCasesList.mockResolvedValue({ data: [mockSubmittedCase] });
 
       render(<CasesClient initialCases={[mockSubmittedCase]} />);
@@ -437,7 +437,6 @@ describe("CasesClient", () => {
       });
 
       expect(screen.getByText("Bereit")).toBeInTheDocument();
-      // "Eingereicht" might still appear in badges, but main display should be "Bereit"
     });
   });
 

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from datetime import datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from app.dependencies.auth import AuthContext, get_current_user
@@ -69,4 +72,61 @@ async def get_billing_me(
             credits=CreditsInfo(balance=balance),
         )
     )
+
+
+# --- Credit History ---
+
+
+class CreditHistoryEntry(BaseModel):
+    id: str
+    delta: int
+    reason: str
+    case_title: str | None
+    created_at: datetime
+
+
+class CreditHistoryResponse(BaseModel):
+    data: list[CreditHistoryEntry]
+
+
+@router.get("/history", response_model=CreditHistoryResponse)
+async def get_credit_history(
+    context: AuthContext = Depends(get_current_user),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> CreditHistoryResponse:
+    """
+    Get credit history for the current user's tenant.
+    Returns ledger entries with case title where applicable.
+    """
+    tenant_id = context.tenant["id"]
+
+    entries = await prisma.creditledgerentry.find_many(
+        where={"tenant_id": tenant_id},
+        order={"created_at": "desc"},
+        take=limit,
+    )
+
+    result: list[CreditHistoryEntry] = []
+    for entry in entries:
+        case_title: str | None = None
+
+        # Try to get case title from metadata
+        if entry.metadata_json and isinstance(entry.metadata_json, dict):
+            case_id = entry.metadata_json.get("case_id")
+            if case_id:
+                case = await prisma.case.find_unique(where={"id": case_id})
+                if case:
+                    case_title = case.title
+
+        result.append(
+            CreditHistoryEntry(
+                id=entry.id,
+                delta=entry.delta,
+                reason=entry.reason,
+                case_title=case_title,
+                created_at=entry.created_at,
+            )
+        )
+
+    return CreditHistoryResponse(data=result)
 

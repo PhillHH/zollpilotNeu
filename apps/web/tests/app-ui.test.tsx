@@ -87,7 +87,7 @@ describe("AppShell", () => {
     expect(screen.getByText("ZollPilot")).toBeInTheDocument();
     expect(screen.getByText("Übersicht")).toBeInTheDocument();
     expect(screen.getByText("Fälle")).toBeInTheDocument();
-    expect(screen.getByText("Abrechnung")).toBeInTheDocument();
+    expect(screen.getByText("Kosten & Credits")).toBeInTheDocument();
   });
 
   test("rendert Footer mit Links", () => {
@@ -210,7 +210,7 @@ describe("Deutsche Texte in App UI", () => {
     
     expect(screen.getByText("Übersicht")).toBeInTheDocument();
     expect(screen.getByText("Fälle")).toBeInTheDocument();
-    expect(screen.getByText("Abrechnung")).toBeInTheDocument();
+    expect(screen.getByText("Kosten & Credits")).toBeInTheDocument();
     expect(screen.getByText("Abmelden")).toBeInTheDocument();
   });
 });

@@ -175,7 +175,7 @@ describe("SummaryClient", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Eingereicht")).toBeInTheDocument();
+      expect(screen.getByText("Bereit")).toBeInTheDocument();
     });
   });
 
@@ -237,7 +237,7 @@ describe("SummaryClient", () => {
     await waitFor(() => {
       expect(screen.getByText("Version")).toBeInTheDocument();
       expect(screen.getByText("1")).toBeInTheDocument();
-      expect(screen.getByText("Eingereicht am")).toBeInTheDocument();
+      expect(screen.getByText("Bereit seit")).toBeInTheDocument();
     });
   });
 

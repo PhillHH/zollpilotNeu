@@ -279,7 +279,7 @@ export function WizardClient({ caseId }: WizardClientProps) {
         setError("Der Fall enthält noch Fehler. Bitte korrigieren Sie diese zuerst.");
         await runValidation();
       } else {
-        setError(apiErr.message || "Fehler beim Einreichen.");
+        setError(apiErr.message || "Fehler beim Abschließen der Vorbereitung.");
       }
     } finally {
       setIsSubmitting(false);
@@ -437,7 +437,7 @@ export function WizardClient({ caseId }: WizardClientProps) {
       {/* Readonly Banner */}
       {isReadonly && (
         <Alert variant="info" title="Nur Lesen">
-          Dieser Fall wurde bereits eingereicht. Änderungen sind nicht mehr möglich.
+          Dieser Fall ist abgeschlossen. Änderungen sind nicht mehr möglich.
         </Alert>
       )}
 
@@ -519,7 +519,7 @@ export function WizardClient({ caseId }: WizardClientProps) {
               onClick={prevStep}
               disabled={isFirstStep}
             >
-              ← Zurück
+              ← Schritt zurück
             </Button>
 
             <Button
@@ -546,7 +546,7 @@ export function WizardClient({ caseId }: WizardClientProps) {
                   disabled={isSubmitting || validationErrors.length > 0}
                   loading={isSubmitting}
                 >
-                  Einreichen
+                  Vorbereitung abschließen
                 </Button>
               )
             ) : (

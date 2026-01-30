@@ -147,7 +147,7 @@ function HowItWorksSection() {
     },
     {
       number: "3",
-      title: "Selbst einreichen",
+      title: "Selbst abgeben",
       description: "Fertig – du sparst die Servicegebühr.",
     },
   ];

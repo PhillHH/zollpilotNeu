@@ -103,7 +103,7 @@ function AppHeader({
             href="/app/billing"
             className={`nav-link ${isActive("/app/billing") ? "nav-link--active" : ""}`}
           >
-            Abrechnung
+            Kosten & Credits
           </Link>
         </nav>
 

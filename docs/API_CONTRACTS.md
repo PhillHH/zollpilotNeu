@@ -455,6 +455,36 @@ Get billing information for the current user's tenant.
 }
 ```
 
+#### `GET /billing/history`
+Get credit transaction history for the current user's tenant.
+
+**Query Parameters:**
+- `limit`: Max entries to return (default: 50, max: 100)
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "delta": "int (+/- credits)",
+      "reason": "string (ADMIN_GRANT | PDF_EXPORT | INITIAL_GRANT | PURCHASE | REFUND)",
+      "case_title": "string|null (title of related case if applicable)",
+      "created_at": "datetime"
+    }
+  ]
+}
+```
+
+**Reason Codes:**
+| Code | Description |
+|------|-------------|
+| `ADMIN_GRANT` | Credits granted by admin |
+| `PDF_EXPORT` | Credits consumed for PDF export |
+| `INITIAL_GRANT` | Initial credits on signup |
+| `PURCHASE` | Credits purchased |
+| `REFUND` | Credits refunded |
+
 ### Profile (tag: profile)
 
 User profile for storing reusable data (form pre-filling).
