@@ -44,6 +44,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const isActive = (path: string) => {
     if (path === "/app") return pathname === "/app";
+    if (path === "/app/profile") return pathname === "/app/profile";
     return pathname.startsWith(path);
   };
 
@@ -108,6 +109,12 @@ function AppHeader({
 
         {/* User Actions */}
         <div className="header-actions">
+          <Link
+            href="/app/profile"
+            className={`profile-link ${isActive("/app/profile") ? "profile-link--active" : ""}`}
+          >
+            Profil
+          </Link>
           {canAccessAdmin && (
             <Link href="/admin" className="admin-link">
               Admin
@@ -185,6 +192,28 @@ function AppHeader({
           display: flex;
           align-items: center;
           gap: var(--space-md);
+        }
+
+        .app-header :global(.profile-link) {
+          font-size: var(--text-sm);
+          font-weight: var(--font-medium);
+          color: var(--color-text-muted);
+          text-decoration: none;
+          padding: var(--space-xs) var(--space-sm);
+          border-radius: var(--radius-md);
+          transition:
+            color var(--transition-fast),
+            background var(--transition-fast);
+        }
+
+        .app-header :global(.profile-link):hover {
+          color: var(--color-text);
+          background: var(--color-border-light);
+        }
+
+        .app-header :global(.profile-link--active) {
+          color: var(--color-primary);
+          background: var(--color-primary-softer);
         }
 
         .app-header :global(.admin-link) {

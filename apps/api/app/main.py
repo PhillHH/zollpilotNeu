@@ -26,6 +26,7 @@ from app.routes.procedures import router as procedures_router
 from app.routes.procedures import cases_procedure_router
 from app.routes.lifecycle import router as lifecycle_router
 from app.routes.pdf import router as pdf_router
+from app.routes.profile import router as profile_router
 
 
 def create_app() -> FastAPI:
@@ -171,6 +172,7 @@ def create_app() -> FastAPI:
     app.include_router(lifecycle_router)
     app.include_router(pdf_router)
     app.include_router(procedures_router)
+    app.include_router(profile_router)
     app.include_router(admin_router)
     return app
 

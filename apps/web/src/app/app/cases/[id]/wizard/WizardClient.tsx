@@ -14,11 +14,13 @@ import {
   cases as casesApi,
   fields as fieldsApi,
   procedures as proceduresApi,
+  profile as profileApi,
   type CaseDetail,
   type ProcedureDefinition,
   type ProcedureStep,
   type ValidationError,
   type ApiError,
+  type ProfileData,
 } from "../../../../lib/api/client";
 
 import { ProcedureSelector } from "./ProcedureSelector";
@@ -93,6 +95,69 @@ export function WizardClient({ caseId }: WizardClientProps) {
     return true;
   }, [procedure, fieldValues]);
 
+  // Map profile data to case field keys
+  const getProfileDefaults = (profileData: ProfileData): Record<string, unknown> => {
+    const defaults: Record<string, unknown> = {};
+
+    // Map profile fields to wizard field keys
+    if (profileData.default_sender_name) {
+      defaults["sender_name"] = profileData.default_sender_name;
+    }
+    if (profileData.default_sender_country) {
+      defaults["sender_country"] = profileData.default_sender_country;
+    }
+    if (profileData.default_recipient_name) {
+      defaults["recipient_name"] = profileData.default_recipient_name;
+    }
+    if (profileData.default_recipient_country) {
+      defaults["recipient_country"] = profileData.default_recipient_country;
+    }
+
+    return defaults;
+  };
+
+  // Apply profile defaults to empty fields
+  const applyProfileDefaults = useCallback(
+    async (existingValues: Record<string, unknown>) => {
+      try {
+        const profileResponse = await profileApi.get();
+        const profileData = profileResponse.data;
+        const defaults = getProfileDefaults(profileData);
+
+        // Only apply defaults where fields are empty
+        const fieldsToUpdate: { key: string; value: unknown }[] = [];
+
+        for (const [key, value] of Object.entries(defaults)) {
+          if (
+            existingValues[key] === undefined ||
+            existingValues[key] === null ||
+            existingValues[key] === ""
+          ) {
+            fieldsToUpdate.push({ key, value });
+          }
+        }
+
+        // Update fields with defaults
+        if (fieldsToUpdate.length > 0) {
+          const newValues = { ...existingValues };
+
+          for (const { key, value } of fieldsToUpdate) {
+            newValues[key] = value;
+            // Save to API (don't await all, just fire)
+            fieldsApi.upsert(caseId, key, value).catch(() => {
+              // Silent fail - user can manually fill
+            });
+          }
+
+          setFieldValues(newValues);
+        }
+      } catch {
+        // Silent fail - profile defaults are optional
+      }
+    },
+    [caseId]
+  );
+
   // Load case and procedure
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -113,13 +178,18 @@ export function WizardClient({ caseId }: WizardClientProps) {
         const procResponse = await proceduresApi.get(loadedCase.procedure.code);
         setProcedure(procResponse.data);
       }
+
+      // Apply profile defaults for new cases (DRAFT with few/no fields)
+      if (loadedCase.status === "DRAFT" && loadedCase.fields.length < 5) {
+        applyProfileDefaults(values);
+      }
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.message || "Fehler beim Laden.");
     } finally {
       setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, applyProfileDefaults]);
 
   useEffect(() => {
     loadData();

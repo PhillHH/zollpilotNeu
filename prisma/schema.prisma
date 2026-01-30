@@ -20,6 +20,33 @@ model User {
   created_cases   Case[]
   credit_entries  CreditLedgerEntry[]
   events          UserEvent[]
+  profile         UserProfile?
+}
+
+// --- User Profile (für Wiederverwendung von Daten) ---
+
+model UserProfile {
+  user_id String @id
+
+  // Persönliche Daten
+  name    String?
+  address String?
+
+  // Standard-Absender
+  default_sender_name    String?
+  default_sender_country String?
+
+  // Standard-Empfänger
+  default_recipient_name    String?
+  default_recipient_country String?
+
+  // Häufige Länder & Währungen (optional)
+  preferred_countries  Json? // Array of country codes, e.g. ["DE", "CN", "US"]
+  preferred_currencies Json? // Array of currency codes, e.g. ["EUR", "USD"]
+
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 enum UserType {

@@ -268,6 +268,54 @@ export const fields = {
     })
 };
 
+// --- Profile Types ---
+
+export type ProfileData = {
+  user_id: string;
+  email: string;
+  name: string | null;
+  address: string | null;
+  default_sender_name: string | null;
+  default_sender_country: string | null;
+  default_recipient_name: string | null;
+  default_recipient_country: string | null;
+  preferred_countries: string[] | null;
+  preferred_currencies: string[] | null;
+  updated_at: string | null;
+};
+
+export type ProfileUpdatePayload = {
+  name?: string | null;
+  address?: string | null;
+  default_sender_name?: string | null;
+  default_sender_country?: string | null;
+  default_recipient_name?: string | null;
+  default_recipient_country?: string | null;
+  preferred_countries?: string[] | null;
+  preferred_currencies?: string[] | null;
+};
+
+type ProfileResponse = { data: ProfileData };
+
+// --- Profile API ---
+
+export const profile = {
+  get: (init?: RequestInit) =>
+    apiRequest<ProfileResponse>("/profile", {
+      credentials: "include",
+      ...init
+    }),
+
+  update: (data: ProfileUpdatePayload, init?: RequestInit) =>
+    apiRequest<ProfileResponse>("/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+      ...init
+    })
+};
+
 // --- Billing Types ---
 
 export type PlanInfo = {
