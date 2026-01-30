@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from app.core.errors import ErrorCode
 from app.core.responses import success_response
-from app.db.prisma_client import get_prisma
+from app.db.prisma_client import prisma
 
 
 router = APIRouter(prefix="/content", tags=["content"])
@@ -78,7 +78,6 @@ async def list_blog_posts():
     Returns posts sorted by published_at descending (newest first).
     Only returns PUBLISHED posts.
     """
-    prisma = get_prisma()
 
     posts = await prisma.blogpost.find_many(
         where={"status": "PUBLISHED"},
@@ -108,7 +107,6 @@ async def get_blog_post(slug: str):
 
     Only returns PUBLISHED posts.
     """
-    prisma = get_prisma()
 
     post = await prisma.blogpost.find_first(
         where={
@@ -151,7 +149,6 @@ async def list_faq_entries():
     Returns entries sorted by category, then by order_index.
     Only returns PUBLISHED entries.
     """
-    prisma = get_prisma()
 
     entries = await prisma.faqentry.find_many(
         where={"status": "PUBLISHED"},
