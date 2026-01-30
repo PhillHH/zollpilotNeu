@@ -341,13 +341,28 @@ export type BillingMe = {
   credits: CreditsInfo;
 };
 
+export type CreditHistoryEntry = {
+  id: string;
+  delta: number;
+  reason: string;
+  case_title: string | null;
+  created_at: string;
+};
+
 type BillingMeResponse = { data: BillingMe };
+type CreditHistoryResponse = { data: CreditHistoryEntry[] };
 
 // --- Billing API ---
 
 export const billing = {
   me: (init?: RequestInit) =>
     apiRequest<BillingMeResponse>("/billing/me", {
+      credentials: "include",
+      ...init
+    }),
+
+  history: (limit?: number, init?: RequestInit) =>
+    apiRequest<CreditHistoryResponse>(`/billing/history${limit ? `?limit=${limit}` : ""}`, {
       credentials: "include",
       ...init
     })
