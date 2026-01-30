@@ -455,6 +455,51 @@ Get billing information for the current user's tenant.
 }
 ```
 
+### Profile (tag: profile)
+
+User profile for storing reusable data (form pre-filling).
+
+#### `GET /profile`
+Get the current user's profile.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "user_id": "uuid",
+    "email": "string",
+    "name": "string|null",
+    "address": "string|null",
+    "default_sender_name": "string|null",
+    "default_sender_country": "string|null (ISO 2-letter code)",
+    "default_recipient_name": "string|null",
+    "default_recipient_country": "string|null (ISO 2-letter code)",
+    "preferred_countries": "string[]|null",
+    "preferred_currencies": "string[]|null",
+    "updated_at": "datetime|null"
+  }
+}
+```
+
+#### `PUT /profile`
+Update the current user's profile. Creates profile if it doesn't exist.
+
+**Request Body:**
+```json
+{
+  "name": "string (optional, max 200)",
+  "address": "string (optional, max 500)",
+  "default_sender_name": "string (optional, max 200)",
+  "default_sender_country": "string (optional, ISO 2-letter code)",
+  "default_recipient_name": "string (optional, max 200)",
+  "default_recipient_country": "string (optional, ISO 2-letter code)",
+  "preferred_countries": "string[] (optional)",
+  "preferred_currencies": "string[] (optional)"
+}
+```
+
+**Response (200):** Same as GET /profile
+
 ### Admin (tag: admin)
 
 Admin endpoints require ADMIN or OWNER role.
