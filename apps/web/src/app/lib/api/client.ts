@@ -713,3 +713,57 @@ export const admin = {
   }
 };
 
+// --- Content Types (Public Blog & FAQ) ---
+
+export type BlogPostListItem = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  published_at: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+};
+
+export type BlogPostDetail = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  published_at: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+};
+
+export type FaqEntryItem = {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  order_index: number;
+  related_blog_slug: string | null;
+};
+
+export type FaqCategory = {
+  category: string;
+  entries: FaqEntryItem[];
+};
+
+type BlogListResponse = { data: BlogPostListItem[] };
+type BlogDetailResponse = { data: BlogPostDetail };
+type FaqListResponse = { data: FaqCategory[] };
+
+// --- Content API (Public, no auth required) ---
+
+export const content = {
+  listBlogPosts: (init?: RequestInit) =>
+    apiRequest<BlogListResponse>("/content/blog", init),
+
+  getBlogPost: (slug: string, init?: RequestInit) =>
+    apiRequest<BlogDetailResponse>(`/content/blog/${slug}`, init),
+
+  listFaq: (init?: RequestInit) =>
+    apiRequest<FaqListResponse>("/content/faq", init)
+};
+

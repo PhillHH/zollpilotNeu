@@ -1,20 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import type { ContentMeta } from "../../lib/content";
+import type { BlogPostDetail } from "../../lib/api/client";
 import { Section } from "../../design-system/primitives/Section";
-import { Badge } from "../../design-system/primitives/Badge";
 import { Card } from "../../design-system/primitives/Card";
 
 type BlogPostClientProps = {
-  meta: ContentMeta;
+  post: BlogPostDetail;
   children: React.ReactNode;
 };
 
 /**
  * Blog Post Detail – Einzelner Blogbeitrag
  */
-export function BlogPostClient({ meta, children }: BlogPostClientProps) {
+export function BlogPostClient({ post, children }: BlogPostClientProps) {
   return (
     <Section maxWidth="md" padding="xl" className="blog-post">
       <article>
@@ -25,23 +24,16 @@ export function BlogPostClient({ meta, children }: BlogPostClientProps) {
 
         {/* Header */}
         <header className="post-header">
-          <h1 className="post-title">{meta.title}</h1>
+          <h1 className="post-title">{post.title}</h1>
           <div className="post-meta">
-            <time dateTime={meta.published_at} className="post-date">
-              {new Date(meta.published_at).toLocaleDateString("de-DE", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </time>
-            {meta.tags && meta.tags.length > 0 && (
-              <div className="post-tags">
-                {meta.tags.map((tag) => (
-                  <Badge key={tag} variant="primary" size="sm">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
+            {post.published_at && (
+              <time dateTime={post.published_at} className="post-date">
+                {new Date(post.published_at).toLocaleDateString("de-DE", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </time>
             )}
           </div>
         </header>
@@ -94,11 +86,6 @@ export function BlogPostClient({ meta, children }: BlogPostClientProps) {
         .post-date {
           font-size: var(--text-sm);
           color: var(--color-text-muted);
-        }
-
-        .post-tags {
-          display: flex;
-          gap: var(--space-xs);
         }
 
         :global(.post-content) {

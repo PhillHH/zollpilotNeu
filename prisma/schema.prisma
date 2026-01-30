@@ -307,3 +307,53 @@ model CreditLedgerEntry {
   @@index([created_at])
 }
 
+// --- Content Models (Blog & FAQ) ---
+
+model BlogPost {
+  id           String        @id @default(uuid())
+  title        String
+  slug         String        @unique
+  excerpt      String
+  content      String        // MDX-ready content
+  status       ContentStatus @default(DRAFT)
+  published_at DateTime?
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  // SEO fields
+  meta_title       String?
+  meta_description String?
+
+  // Relations
+  faq_entries FaqEntry[]
+
+  @@index([status])
+  @@index([published_at])
+  @@index([slug])
+}
+
+model FaqEntry {
+  id           String        @id @default(uuid())
+  question     String
+  answer       String        // MDX-ready content
+  category     String        @default("Allgemein")
+  order_index  Int           @default(0)
+  status       ContentStatus @default(DRAFT)
+  published_at DateTime?
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  // Optional relation to BlogPost for "read more"
+  related_blog_post_id String?
+  related_blog_post    BlogPost? @relation(fields: [related_blog_post_id], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([category])
+  @@index([order_index])
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+}
+
