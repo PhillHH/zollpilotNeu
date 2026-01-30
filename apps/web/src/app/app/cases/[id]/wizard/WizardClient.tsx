@@ -23,6 +23,7 @@ import {
 
 import { ProcedureSelector } from "./ProcedureSelector";
 import { FieldRenderer } from "./FieldRenderer";
+import { MappingView } from "./mapping";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -67,12 +68,30 @@ export function WizardClient({ caseId }: WizardClientProps) {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMappingView, setShowMappingView] = useState(false);
 
   // Debounce timers
   const [debounceTimers, setDebounceTimers] = useState<Record<string, NodeJS.Timeout>>({});
 
   // Readonly mode when case is not DRAFT
   const isReadonly = caseData?.status !== "DRAFT";
+
+  // Check if all required fields are filled (all steps complete)
+  const allStepsComplete = useMemo(() => {
+    if (!procedure) return false;
+
+    for (const step of procedure.steps) {
+      for (const field of step.fields) {
+        if (field.required) {
+          const value = fieldValues[field.field_key];
+          if (value === null || value === undefined || value === "") {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }, [procedure, fieldValues]);
 
   // Load case and procedure
   const loadData = useCallback(async () => {
@@ -435,10 +454,11 @@ export function WizardClient({ caseId }: WizardClientProps) {
 
             <Button
               variant="ghost"
-              onClick={runValidation}
-              loading={isValidating}
+              onClick={() => setShowMappingView(true)}
+              disabled={!allStepsComplete || isReadonly}
+              title={!allStepsComplete ? "Bitte füllen Sie zuerst alle Pflichtfelder aus" : undefined}
             >
-              Prüfen
+              Wo trage ich das beim Zoll ein?
             </Button>
 
             {isLastStep ? (
@@ -557,7 +577,59 @@ export function WizardClient({ caseId }: WizardClientProps) {
             flex-wrap: wrap;
           }
         }
+
+        /* Mapping View Modal Overlay */
+        .mapping-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: var(--space-lg);
+          overflow-y: auto;
+        }
+
+        .mapping-modal {
+          background: var(--color-background);
+          border-radius: var(--radius-lg);
+          max-width: 900px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          padding: var(--space-xl);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        @media (max-width: 768px) {
+          .mapping-modal {
+            padding: var(--space-lg);
+            max-height: 95vh;
+          }
+        }
       `}</style>
+
+      {/* Mapping View Modal */}
+      {showMappingView && procedure && (
+        <div className="mapping-overlay" onClick={() => setShowMappingView(false)}>
+          <div className="mapping-modal" onClick={(e) => e.stopPropagation()}>
+            <MappingView
+              procedureCode={procedure.code}
+              procedureVersion={procedure.version}
+              fieldValues={fieldValues}
+              onClose={() => setShowMappingView(false)}
+              onConfirm={async () => {
+                setShowMappingView(false);
+                await handleSubmit();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </Section>
   );
 }

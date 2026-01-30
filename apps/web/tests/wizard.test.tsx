@@ -306,13 +306,13 @@ describe("WizardClient", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Prüfen")).toBeInTheDocument();
+      expect(screen.getByText("Weiter")).toBeInTheDocument();
     });
 
-    // Click validate button
-    const validateBtn = screen.getByText("Prüfen");
+    // Click next button to trigger validation
+    const nextBtn = screen.getByText("Weiter");
     await act(async () => {
-      fireEvent.click(validateBtn);
+      fireEvent.click(nextBtn);
     });
 
     // Check validation errors are shown
@@ -376,15 +376,14 @@ describe("WizardClient", () => {
       expect(screen.getByText("Einreichen")).toBeInTheDocument();
     });
 
-    // Run validation to populate errors
-    const validateBtn = screen.getByText("Prüfen");
+    // Try to submit to trigger validation
+    const submitBtn = screen.getByText("Einreichen");
     await act(async () => {
-      fireEvent.click(validateBtn);
+      fireEvent.click(submitBtn);
     });
 
     // Submit button should be disabled due to validation errors
     await waitFor(() => {
-      const submitBtn = screen.getByText("Einreichen");
       expect(submitBtn).toBeDisabled();
     });
   });
@@ -810,10 +809,10 @@ describe("Wizard Complete Flow (Validation Fix)", () => {
       expect(screen.getByPlaceholderText("Enter tracking")).toBeInTheDocument();
     });
 
-    // Click validate - should show error
-    const validateBtn = screen.getByText("Prüfen");
+    // Click submit button (on single-step wizard) to trigger validation - should show error
+    const submitBtn = screen.getByText("Einreichen");
     await act(async () => {
-      fireEvent.click(validateBtn);
+      fireEvent.click(submitBtn);
     });
 
     await waitFor(() => {
@@ -831,9 +830,9 @@ describe("Wizard Complete Flow (Validation Fix)", () => {
       vi.advanceTimersByTime(500);
     });
 
-    // Validate again - should pass
+    // Try submitting again - validation should pass now
     await act(async () => {
-      fireEvent.click(validateBtn);
+      fireEvent.click(submitBtn);
     });
 
     await waitFor(() => {
