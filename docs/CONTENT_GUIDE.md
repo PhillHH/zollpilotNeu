@@ -434,9 +434,20 @@ Die technische SEO ist implementiert:
 | Open Graph | ✓ | In Layout/Page-Metadaten |
 | Canonical URLs | ✓ | Selbstreferenzierend |
 
+**Sitemap-Generierung (seit Sprint 6):**
+- Statische Seiten: `/`, `/blog`, `/faq`, `/impressum`, `/datenschutz`, `/login`, `/register`
+- Dynamische Blog-Posts: Aus API (`/content/blog`) – nur PUBLISHED
+- FAQ: Keine Einzelseiten, nur `/faq` (Antworten inline als Akkordeon)
+- Revalidierung: Stündlich (1h Cache)
+
 **Robots.txt Regeln:**
-- Erlaubt: `/`, `/blog/*`, `/faq/*`
-- Blockiert: `/app/*`, `/admin/*`, `/api/*`
+- Erlaubt: `/`, `/blog`, `/blog/*`, `/faq`, `/faq/*`
+- Blockiert: `/app`, `/app/*`, `/admin`, `/admin/*`, `/api`, `/api/*`
+
+**H1-Regeln:**
+- Genau eine H1 pro Seite
+- H1 muss den Hauptinhalt beschreiben
+- Keine H1-Duplikate im Header oder Footer
 
 ---
 

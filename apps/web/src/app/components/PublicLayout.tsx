@@ -234,7 +234,7 @@ function Footer() {
         {/* Copyright */}
         <div className="footer__bottom">
           <p className="footer__disclaimer">
-            ZollPilot übermittelt keine Daten an Zollbehörden und führt keine Zollanmeldungen durch.
+            ZollPilot bereitet Zollanmeldungen vor. Die eigentliche Anmeldung führen Sie selbst durch.
           </p>
           <p>© {new Date().getFullYear()} ZollPilot. Alle Rechte vorbehalten.</p>
         </div>

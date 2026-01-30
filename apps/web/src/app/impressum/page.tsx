@@ -20,29 +20,29 @@ export default function ImpressumPage() {
           <div className="legal-content legal-content--impressum">
             <h2>Angaben gemäß § 5 TMG</h2>
             <p>
-              <strong>ZollPilot</strong>
+              <strong>Growento UG (haftungsbeschränkt) i. G.</strong>
               <br />
-              Musterstraße 123
-              <br />
-              12345 Musterstadt
+              Hamburg
               <br />
               Deutschland
+            </p>
+
+            <p>
+              <strong>Vertreten durch:</strong>
+              <br />
+              Phillip Rugullis (Geschäftsführer)
             </p>
 
             <h2>Kontakt</h2>
             <p>
               E-Mail: info@zollpilot.de
-              <br />
-              Telefon: +49 (0) 123 456789
             </p>
 
             <h2>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
             <p>
-              Max Mustermann
+              Phillip Rugullis
               <br />
-              Musterstraße 123
-              <br />
-              12345 Musterstadt
+              Hamburg
             </p>
 
             <h2>EU-Streitschlichtung</h2>
@@ -61,11 +61,25 @@ export default function ImpressumPage() {
               Unsere E-Mail-Adresse finden Sie oben im Impressum.
             </p>
 
+            <h2>Verbraucherstreitbeilegung</h2>
+            <p>
+              Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren
+              vor einer Verbraucherschlichtungsstelle teilzunehmen.
+            </p>
+
             <h2>Haftungsausschluss</h2>
             <p>
               Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt.
               Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte
               können wir jedoch keine Gewähr übernehmen.
+            </p>
+
+            <h2>Hinweis zu ZollPilot</h2>
+            <p>
+              ZollPilot bereitet Zollanmeldungen vor. Die eigentliche Anmeldung
+              führen Sie selbst durch – zum Beispiel über das IZA-Portal des
+              Zolls oder bei der Zollstelle. ZollPilot übermittelt keine Daten
+              an Zollbehörden.
             </p>
           </div>
         </Card>

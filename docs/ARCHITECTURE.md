@@ -100,9 +100,23 @@ Die öffentlichen Seiten (Landing, Blog, FAQ) nutzen das Design System v1 und si
 ### SEO-Implementierung
 
 - **Sitemap**: Auto-generiert unter `/sitemap.xml`
+  - Statische Seiten (/, /blog, /faq, /impressum, /datenschutz, /login, /register)
+  - Dynamische Blog-Posts (aus API, nur PUBLISHED)
+  - Keine FAQ-Einzelseiten (Antworten inline auf /faq)
+  - Revalidierung: stündlich (1h Cache)
 - **robots.txt**: Erlaubt öffentliche Seiten, blockiert `/app`, `/admin`, `/api`
 - **Meta-Tags**: Per-Page `title`, `description`, Open Graph
 - **Canonical URLs**: Selbstreferenzierend pro Seite
+
+### Vertrauen & Wording
+
+Die öffentlichen Seiten kommunizieren klar die Produktgrenzen:
+
+- **Globaler Disclaimer im Footer**: „ZollPilot bereitet Zollanmeldungen vor. Die eigentliche Anmeldung führen Sie selbst durch."
+- **Impressum**: Vollständige Anbieterkennzeichnung gemäß § 5 TMG
+- **Kein Behörden-Framing**: Keine irreführenden Aussagen über offizielle/amtliche Funktionen
+
+Siehe [WORDING_GUIDE.md](./WORDING_GUIDE.md) für erlaubte/verbotene Begriffe.
 
 ### Content-Workflow
 
