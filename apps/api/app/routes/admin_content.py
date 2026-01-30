@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, field_validator
 
 from app.core.rbac import Role
@@ -505,11 +505,11 @@ async def update_blog_post(
     )
 
 
-@router.delete("/blog/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/blog/{post_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_blog_post(
     post_id: str,
     _context: AuthContext = Depends(get_content_editor_context),
-) -> None:
+) -> Response:
     """Delete a blog post."""
     existing = await prisma.blogpost.find_unique(where={"id": post_id})
     if not existing:
@@ -519,6 +519,7 @@ async def delete_blog_post(
         )
 
     await prisma.blogpost.delete(where={"id": post_id})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # --- FAQ Endpoints ---
@@ -705,11 +706,11 @@ async def update_faq_entry(
     )
 
 
-@router.delete("/faq/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/faq/{entry_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_faq_entry(
     entry_id: str,
     _context: AuthContext = Depends(get_content_editor_context),
-) -> None:
+) -> Response:
     """Delete a FAQ entry."""
     existing = await prisma.faqentry.find_unique(where={"id": entry_id})
     if not existing:
@@ -719,6 +720,7 @@ async def delete_faq_entry(
         )
 
     await prisma.faqentry.delete(where={"id": entry_id})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # --- Utility Endpoints ---
