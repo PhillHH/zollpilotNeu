@@ -73,7 +73,7 @@ export function BillingClient() {
     return (
       <Section>
         <div className="loading-container">
-          <p>Lade Abrechnungsdaten...</p>
+          <p>Lade Kosten und Credits...</p>
         </div>
         <style jsx>{`
           .loading-container {
@@ -90,7 +90,7 @@ export function BillingClient() {
     return (
       <Section>
         <Alert variant="error">
-          {error ?? "Abrechnungsdaten konnten nicht geladen werden."}
+          {error ?? "Kosten und Credits konnten nicht geladen werden."}
         </Alert>
       </Section>
     );
@@ -99,7 +99,7 @@ export function BillingClient() {
   return (
     <Section>
       <div className="billing-page">
-        <h1 className="page-title">Abrechnung</h1>
+        <h1 className="page-title">Kosten & Credits</h1>
 
         {/* Credit Balance Section */}
         <div className="section-grid">

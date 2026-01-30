@@ -425,7 +425,7 @@ describe("WizardClient", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Eingereicht – Änderungen nicht mehr möglich")).toBeInTheDocument();
+      expect(screen.getByText("Dieser Fall ist abgeschlossen. Änderungen sind nicht mehr möglich.")).toBeInTheDocument();
     });
   });
 

@@ -311,7 +311,7 @@ export function ProfileClient() {
           onClick={handleSave}
           loading={saveStatus === "saving"}
         >
-          {saveStatus === "saved" ? "Gespeichert!" : "Profil speichern"}
+          {saveStatus === "saved" ? "Gespeichert!" : "Änderungen sichern"}
         </Button>
         {saveStatus === "saved" && (
           <span className="save-success">Änderungen wurden gespeichert</span>

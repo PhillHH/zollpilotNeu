@@ -70,7 +70,7 @@ describe("BillingClient", () => {
 
     render(<BillingClient />);
 
-    expect(screen.getByText(/Lade Abrechnungsdaten/i)).toBeInTheDocument();
+    expect(screen.getByText(/Lade Kosten und Credits/i)).toBeInTheDocument();
   });
 
   test("renders billing page with credit balance", async () => {
@@ -80,7 +80,7 @@ describe("BillingClient", () => {
     render(<BillingClient />);
 
     await waitFor(() => {
-      expect(screen.getByText("Abrechnung")).toBeInTheDocument();
+      expect(screen.getByText("Kosten & Credits")).toBeInTheDocument();
     });
 
     // Check credit balance is displayed
@@ -112,7 +112,7 @@ describe("BillingClient", () => {
     render(<BillingClient />);
 
     await waitFor(() => {
-      expect(screen.getByText("Abrechnung")).toBeInTheDocument();
+      expect(screen.getByText("Kosten & Credits")).toBeInTheDocument();
     });
 
     expect(screen.queryByText("Aktueller Tarif")).not.toBeInTheDocument();
@@ -259,7 +259,7 @@ describe("BillingClient", () => {
     render(<BillingClient />);
 
     await waitFor(() => {
-      expect(screen.getByText("Abrechnung")).toBeInTheDocument();
+      expect(screen.getByText("Kosten & Credits")).toBeInTheDocument();
     });
 
     // Verify API was called (tenant-scoped by session)

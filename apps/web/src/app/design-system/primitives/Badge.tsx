@@ -45,7 +45,7 @@ export function Badge({
         break;
       case "submitted":
         effectiveVariant = "success";
-        displayText = "Eingereicht";
+        displayText = "Bereit";
         break;
       case "archived":
         effectiveVariant = "info";

@@ -101,7 +101,7 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
       if (apiErr.code === "INSUFFICIENT_CREDITS") {
         setPdfError("Nicht genügend Credits. Bitte laden Sie Credits auf.");
       } else if (apiErr.code === "CASE_NOT_SUBMITTED") {
-        setPdfError("Fall muss zuerst eingereicht werden.");
+        setPdfError("Fall muss zuerst abgeschlossen werden.");
       } else {
         setPdfError(apiErr.message || "PDF-Export fehlgeschlagen.");
       }
@@ -282,7 +282,7 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
 
                 <p className="pdf-hint">
                   {caseData?.status !== "SUBMITTED"
-                    ? "Fall muss zuerst eingereicht werden."
+                    ? "Fall muss zuerst abgeschlossen werden."
                     : hasNoCredits
                       ? (
                         <>
@@ -298,10 +298,10 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
             <Card padding="lg">
               <div className="empty-state">
                 <div className="empty-icon">📝</div>
-                <h3 className="empty-title">Noch nicht eingereicht</h3>
+                <h3 className="empty-title">Noch nicht abgeschlossen</h3>
                 <p className="empty-text">
-                  Der Fall wurde noch nicht eingereicht. Füllen Sie den Wizard aus
-                  und reichen Sie den Fall ein.
+                  Der Case wurde noch nicht abgeschlossen. Füllen Sie den Wizard aus
+                  und schließen Sie die Vorbereitung ab.
                 </p>
                 <Link href={`/app/cases/${caseId}/wizard`}>
                   <Button variant="primary">Zum Wizard</Button>
@@ -338,7 +338,7 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
 
               {caseData?.submitted_at && (
                 <div className="meta-item">
-                  <span className="meta-label">Eingereicht am</span>
+                  <span className="meta-label">Bereit seit</span>
                   <span className="meta-value">{formatDate(caseData.submitted_at)}</span>
                 </div>
               )}

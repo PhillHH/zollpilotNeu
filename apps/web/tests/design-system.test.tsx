@@ -82,9 +82,9 @@ describe("Badge", () => {
     expect(screen.getByText("Entwurf")).toBeInTheDocument();
   });
 
-  test("status 'submitted' zeigt deutschen Text 'Eingereicht'", () => {
+  test("status 'submitted' zeigt deutschen Text 'Bereit'", () => {
     render(<Badge status="submitted">Ignored</Badge>);
-    expect(screen.getByText("Eingereicht")).toBeInTheDocument();
+    expect(screen.getByText("Bereit")).toBeInTheDocument();
   });
 
   test("status 'archived' zeigt deutschen Text 'Archiviert'", () => {

@@ -223,7 +223,7 @@ export default function AppDashboard() {
                 )}
                 <Link href="/app/billing" className="stat-cta">
                   <Button variant="secondary" size="sm" fullWidth>
-                    Credits verwalten
+                    Kosten anzeigen
                   </Button>
                 </Link>
               </>
@@ -352,9 +352,9 @@ export default function AppDashboard() {
       {/* Hinweis bei fehlenden Credits */}
       {hasNoCredits && !hasNoCases && recentCases.some((c: CaseSummary) => c.status.toUpperCase() === "SUBMITTED") && (
         <Alert variant="info">
-          <strong>Keine Credits vorhanden.</strong> Um PDFs zu exportieren, benötigen Sie Credits.{" "}
+          <strong>Keine Credits vorhanden.</strong> Um Ausfüllhilfen zu exportieren, benötigen Sie Credits.{" "}
           <Link href="/app/billing" className="alert-link">
-            Zur Abrechnung
+            Zu Kosten & Credits
           </Link>
         </Alert>
       )}
