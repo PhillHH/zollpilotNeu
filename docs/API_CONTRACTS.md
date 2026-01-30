@@ -618,6 +618,110 @@ Get credit ledger entries for a tenant.
 { "data": [{ "id": "uuid", "delta": "int", "reason": "string", "metadata_json": "any|null", "created_by_user_id": "uuid|null", "created_at": "datetime" }] }
 ```
 
+#### Admin Content (tag: admin-content)
+
+Admin endpoints for managing blog and FAQ content. Requires EDITOR role or higher.
+
+##### `GET /admin/content/blog`
+List all blog posts (includes drafts).
+
+**Query Parameters:**
+- `status`: Filter by status (DRAFT, PUBLISHED)
+
+**Response (200):**
+```json
+{ "data": [{ "id": "uuid", "title": "string", "slug": "string", "excerpt": "string", "status": "DRAFT|PUBLISHED", "published_at": "datetime|null", "created_at": "datetime", "updated_at": "datetime" }], "total": "int" }
+```
+
+##### `GET /admin/content/blog/{id}`
+Get a single blog post by ID.
+
+**Response (200):**
+```json
+{ "data": { "id": "uuid", "title": "string", "slug": "string", "excerpt": "string", "content": "string", "status": "DRAFT|PUBLISHED", "published_at": "datetime|null", "created_at": "datetime", "updated_at": "datetime", "meta_title": "string|null", "meta_description": "string|null", "created_by_user_id": "uuid|null", "updated_by_user_id": "uuid|null" } }
+```
+
+##### `POST /admin/content/blog`
+Create a new blog post.
+
+**Request Body:**
+```json
+{ "title": "string", "slug": "string (unique)", "excerpt": "string", "content": "string", "status": "DRAFT|PUBLISHED (default: DRAFT)", "meta_title": "string (optional)", "meta_description": "string (optional)" }
+```
+
+**Response (201):** BlogPost object
+
+**Errors:**
+- 409 `SLUG_EXISTS`: Slug already in use
+
+##### `PUT /admin/content/blog/{id}`
+Update a blog post.
+
+**Request Body:**
+```json
+{ "title": "string (optional)", "slug": "string (optional)", "excerpt": "string (optional)", "content": "string (optional)", "status": "DRAFT|PUBLISHED (optional)", "meta_title": "string (optional)", "meta_description": "string (optional)" }
+```
+
+**Response (200):** BlogPost object
+
+##### `DELETE /admin/content/blog/{id}`
+Delete a blog post.
+
+**Response (204):** No content
+
+##### `GET /admin/content/faq`
+List all FAQ entries (includes drafts).
+
+**Query Parameters:**
+- `status`: Filter by status (DRAFT, PUBLISHED)
+- `category`: Filter by category
+
+**Response (200):**
+```json
+{ "data": [{ "id": "uuid", "question": "string", "category": "string", "order_index": "int", "status": "DRAFT|PUBLISHED", "published_at": "datetime|null", "created_at": "datetime", "updated_at": "datetime" }], "total": "int" }
+```
+
+##### `GET /admin/content/faq/{id}`
+Get a single FAQ entry by ID.
+
+**Response (200):**
+```json
+{ "data": { "id": "uuid", "question": "string", "answer": "string", "category": "string", "order_index": "int", "status": "DRAFT|PUBLISHED", "published_at": "datetime|null", "created_at": "datetime", "updated_at": "datetime", "related_blog_post_id": "uuid|null", "created_by_user_id": "uuid|null", "updated_by_user_id": "uuid|null" } }
+```
+
+##### `POST /admin/content/faq`
+Create a new FAQ entry.
+
+**Request Body:**
+```json
+{ "question": "string", "answer": "string", "category": "string (default: Allgemein)", "order_index": "int (default: 0)", "status": "DRAFT|PUBLISHED (default: DRAFT)", "related_blog_post_id": "uuid (optional)" }
+```
+
+**Response (201):** FaqEntry object
+
+##### `PUT /admin/content/faq/{id}`
+Update a FAQ entry.
+
+**Request Body:**
+```json
+{ "question": "string (optional)", "answer": "string (optional)", "category": "string (optional)", "order_index": "int (optional)", "status": "DRAFT|PUBLISHED (optional)", "related_blog_post_id": "uuid (optional)" }
+```
+
+**Response (200):** FaqEntry object
+
+##### `DELETE /admin/content/faq/{id}`
+Delete a FAQ entry.
+
+**Response (204):** No content
+
+##### `GET /admin/content/categories`
+List all unique FAQ categories.
+
+**Response (200):**
+```json
+{ "data": ["string"] }
+```
+
 
 
 

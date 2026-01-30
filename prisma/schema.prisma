@@ -21,6 +21,12 @@ model User {
   credit_entries  CreditLedgerEntry[]
   events          UserEvent[]
   profile         UserProfile?
+
+  // Content audit relations
+  created_blog_posts BlogPost[] @relation("BlogPostCreatedBy")
+  updated_blog_posts BlogPost[] @relation("BlogPostUpdatedBy")
+  created_faq_entries FaqEntry[] @relation("FaqEntryCreatedBy")
+  updated_faq_entries FaqEntry[] @relation("FaqEntryUpdatedBy")
 }
 
 // --- User Profile (für Wiederverwendung von Daten) ---
@@ -133,6 +139,7 @@ enum Role {
   SYSTEM_ADMIN  // ZollPilot internal: full system access
   OWNER         // Tenant owner: full tenant access
   ADMIN         // Tenant admin: administrative tenant access
+  EDITOR        // Content editor: blog/FAQ management only
   USER          // Standard user: limited access
 }
 
@@ -324,6 +331,12 @@ model BlogPost {
   meta_title       String?
   meta_description String?
 
+  // Audit fields
+  created_by_user_id String?
+  updated_by_user_id String?
+  created_by         User?     @relation("BlogPostCreatedBy", fields: [created_by_user_id], references: [id], onDelete: SetNull)
+  updated_by         User?     @relation("BlogPostUpdatedBy", fields: [updated_by_user_id], references: [id], onDelete: SetNull)
+
   // Relations
   faq_entries FaqEntry[]
 
@@ -346,6 +359,12 @@ model FaqEntry {
   // Optional relation to BlogPost for "read more"
   related_blog_post_id String?
   related_blog_post    BlogPost? @relation(fields: [related_blog_post_id], references: [id], onDelete: SetNull)
+
+  // Audit fields
+  created_by_user_id String?
+  updated_by_user_id String?
+  created_by         User?     @relation("FaqEntryCreatedBy", fields: [created_by_user_id], references: [id], onDelete: SetNull)
+  updated_by         User?     @relation("FaqEntryUpdatedBy", fields: [updated_by_user_id], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([category])

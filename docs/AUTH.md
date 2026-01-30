@@ -37,27 +37,31 @@ ZollPilot implements session-based authentication with HTTP-only cookies and rol
 
 | Role | Level | Description | Access |
 |------|-------|-------------|--------|
-| `SYSTEM_ADMIN` | 4 | ZollPilot internal | Full system access (plans, all tenants) |
-| `OWNER` | 3 | Tenant owner | Full access within their tenant |
-| `ADMIN` | 2 | Tenant administrator | Administrative access within tenant |
+| `SYSTEM_ADMIN` | 5 | ZollPilot internal | Full system access (plans, all tenants, content) |
+| `OWNER` | 4 | Tenant owner | Full access within their tenant |
+| `ADMIN` | 3 | Tenant administrator | Administrative access within tenant |
+| `EDITOR` | 2 | Content editor | Blog/FAQ management only |
 | `USER` | 1 | Standard user | Limited access within tenant |
 
 ### Key Distinctions
 
-- **SYSTEM_ADMIN**: Can access `/admin/*` endpoints (plans, all tenants, credits)
+- **SYSTEM_ADMIN**: Can access `/admin/*` endpoints (plans, all tenants, credits, content)
+- **EDITOR**: Can access `/admin/content/*` endpoints (blog, FAQ), NO access to system admin
 - **OWNER/ADMIN**: Tenant-level administrators, NO access to system admin
 - **USER**: Standard tenant member
 
 ## Access Matrix
 
-| Endpoint | USER | ADMIN | OWNER | SYSTEM_ADMIN |
-|----------|------|-------|-------|--------------|
-| `/cases/*` | ✓ | ✓ | ✓ | ✓ |
-| `/billing/me` | ✓ | ✓ | ✓ | ✓ |
-| `/procedures/*` | ✓ | ✓ | ✓ | ✓ |
-| `/admin/plans` | ✗ | ✗ | ✗ | ✓ |
-| `/admin/tenants` | ✗ | ✗ | ✗ | ✓ |
-| `/admin/tenants/{id}/credits/*` | ✗ | ✗ | ✗ | ✓ |
+| Endpoint | USER | EDITOR | ADMIN | OWNER | SYSTEM_ADMIN |
+|----------|------|--------|-------|-------|--------------|
+| `/cases/*` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/billing/me` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/procedures/*` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/admin/content/blog/*` | ✗ | ✓ | ✓ | ✓ | ✓ |
+| `/admin/content/faq/*` | ✗ | ✓ | ✓ | ✓ | ✓ |
+| `/admin/plans` | ✗ | ✗ | ✗ | ✗ | ✓ |
+| `/admin/tenants` | ✗ | ✗ | ✗ | ✗ | ✓ |
+| `/admin/tenants/{id}/credits/*` | ✗ | ✗ | ✗ | ✗ | ✓ |
 
 ## Authentication Flow
 
@@ -184,6 +188,8 @@ Access denials are logged with:
 | `apps/api/app/dependencies/auth.py` | Auth context and role guards |
 | `apps/api/app/routes/auth.py` | Auth endpoints (register, login, me) |
 | `apps/api/app/routes/admin.py` | Admin endpoints (SYSTEM_ADMIN only) |
+| `apps/api/app/routes/admin_content.py` | Content admin endpoints (EDITOR+) |
 | `apps/web/src/app/lib/auth.ts` | Frontend auth utilities |
 | `apps/web/src/app/admin/layout.tsx` | Admin route guard |
+| `apps/web/src/app/admin/content/*` | Content admin pages (blog, FAQ) |
 | `apps/web/src/app/components/guards/AdminGuard.tsx` | Client-side admin guard |

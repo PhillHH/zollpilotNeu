@@ -767,3 +767,195 @@ export const content = {
     apiRequest<FaqListResponse>("/content/faq", init)
 };
 
+// --- Admin Content Types ---
+
+export type AdminBlogPost = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  status: "DRAFT" | "PUBLISHED";
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
+};
+
+export type AdminBlogPostListItem = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  status: "DRAFT" | "PUBLISHED";
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminFaqEntry = {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  order_index: number;
+  status: "DRAFT" | "PUBLISHED";
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+  related_blog_post_id: string | null;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
+};
+
+export type AdminFaqListItem = {
+  id: string;
+  question: string;
+  category: string;
+  order_index: number;
+  status: "DRAFT" | "PUBLISHED";
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BlogPostCreatePayload = {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  status?: "DRAFT" | "PUBLISHED";
+  meta_title?: string;
+  meta_description?: string;
+};
+
+export type BlogPostUpdatePayload = {
+  title?: string;
+  slug?: string;
+  excerpt?: string;
+  content?: string;
+  status?: "DRAFT" | "PUBLISHED";
+  meta_title?: string;
+  meta_description?: string;
+};
+
+export type FaqCreatePayload = {
+  question: string;
+  answer: string;
+  category?: string;
+  order_index?: number;
+  status?: "DRAFT" | "PUBLISHED";
+  related_blog_post_id?: string;
+};
+
+export type FaqUpdatePayload = {
+  question?: string;
+  answer?: string;
+  category?: string;
+  order_index?: number;
+  status?: "DRAFT" | "PUBLISHED";
+  related_blog_post_id?: string;
+};
+
+type AdminBlogListResponse = { data: AdminBlogPostListItem[]; total: number };
+type AdminBlogDetailResponse = { data: AdminBlogPost };
+type AdminFaqListResponse = { data: AdminFaqListItem[]; total: number };
+type AdminFaqDetailResponse = { data: AdminFaqEntry };
+type CategoriesResponse = { data: string[] };
+
+// --- Admin Content API ---
+
+export const adminContent = {
+  blog: {
+    list: (status?: "DRAFT" | "PUBLISHED", init?: RequestInit) =>
+      apiRequest<AdminBlogListResponse>(
+        `/admin/content/blog${status ? `?status=${status}` : ""}`,
+        { credentials: "include", ...init }
+      ),
+
+    get: (id: string, init?: RequestInit) =>
+      apiRequest<AdminBlogDetailResponse>(`/admin/content/blog/${id}`, {
+        credentials: "include",
+        ...init
+      }),
+
+    create: (data: BlogPostCreatePayload, init?: RequestInit) =>
+      apiRequest<AdminBlogDetailResponse>("/admin/content/blog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+        ...init
+      }),
+
+    update: (id: string, data: BlogPostUpdatePayload, init?: RequestInit) =>
+      apiRequest<AdminBlogDetailResponse>(`/admin/content/blog/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+        ...init
+      }),
+
+    delete: (id: string, init?: RequestInit) =>
+      apiRequest<void>(`/admin/content/blog/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+        ...init
+      })
+  },
+
+  faq: {
+    list: (status?: "DRAFT" | "PUBLISHED", category?: string, init?: RequestInit) => {
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (category) params.set("category", category);
+      const query = params.toString();
+      return apiRequest<AdminFaqListResponse>(
+        `/admin/content/faq${query ? `?${query}` : ""}`,
+        { credentials: "include", ...init }
+      );
+    },
+
+    get: (id: string, init?: RequestInit) =>
+      apiRequest<AdminFaqDetailResponse>(`/admin/content/faq/${id}`, {
+        credentials: "include",
+        ...init
+      }),
+
+    create: (data: FaqCreatePayload, init?: RequestInit) =>
+      apiRequest<AdminFaqDetailResponse>("/admin/content/faq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+        ...init
+      }),
+
+    update: (id: string, data: FaqUpdatePayload, init?: RequestInit) =>
+      apiRequest<AdminFaqDetailResponse>(`/admin/content/faq/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+        ...init
+      }),
+
+    delete: (id: string, init?: RequestInit) =>
+      apiRequest<void>(`/admin/content/faq/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+        ...init
+      }),
+
+    categories: (init?: RequestInit) =>
+      apiRequest<CategoriesResponse>("/admin/content/categories", {
+        credentials: "include",
+        ...init
+      })
+  }
+};
+
