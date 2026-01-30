@@ -24,6 +24,8 @@ type ButtonProps = {
   onClick?: () => void;
   /** Zusätzliche CSS-Klassen */
   className?: string;
+  /** Tooltip-Text */
+  title?: string;
 };
 
 /**
@@ -45,6 +47,7 @@ export function Button({
   type = "button",
   onClick,
   className = "",
+  title,
 }: ButtonProps) {
   const variantClass = `btn--${variant}`;
   const sizeClass = `btn--${size}`;
@@ -57,6 +60,7 @@ export function Button({
       className={`btn ${variantClass} ${sizeClass} ${fullWidthClass} ${loadingClass} ${className}`}
       disabled={disabled || loading}
       onClick={onClick}
+      title={title}
     >
       {loading && (
         <span className="btn__spinner" aria-hidden="true">
