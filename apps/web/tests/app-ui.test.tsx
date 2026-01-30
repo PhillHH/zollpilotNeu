@@ -2,8 +2,9 @@
  * Tests für App UI (Dashboard, Cases, Wizard, Summary)
  */
 
+import React from "react";
 import { describe, test, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -14,12 +15,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Mock API client
+const mockCasesList = vi.fn();
+const mockCasesGet = vi.fn();
+const mockProceduresGet = vi.fn();
+
 vi.mock("../src/app/lib/api/client", () => ({
   cases: {
-    list: vi.fn(),
-    get: vi.fn(),
+    list: (...args: unknown[]) => mockCasesList(...args),
+    get: (...args: unknown[]) => mockCasesGet(...args),
     create: vi.fn(),
     submit: vi.fn(),
+    patch: vi.fn(),
     listSnapshots: vi.fn(),
     getSummary: vi.fn(),
     exportPdf: vi.fn(),
@@ -29,7 +35,7 @@ vi.mock("../src/app/lib/api/client", () => ({
   },
   procedures: {
     list: vi.fn(),
-    get: vi.fn(),
+    get: (...args: unknown[]) => mockProceduresGet(...args),
     bind: vi.fn(),
     validate: vi.fn(),
   },
@@ -37,6 +43,16 @@ vi.mock("../src/app/lib/api/client", () => ({
     upsert: vi.fn(),
   },
 }));
+
+import { beforeEach } from "vitest";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Default mock: empty list
+  mockCasesList.mockResolvedValue({ data: [] });
+  mockCasesGet.mockResolvedValue({ data: null });
+  mockProceduresGet.mockResolvedValue({ data: null });
+});
 
 // Import components
 import { CasesClient } from "../src/app/app/cases/CasesClient";
@@ -110,34 +126,38 @@ describe("AppShell", () => {
 describe("CasesClient", () => {
   test("rendert Überschrift", () => {
     render(<CasesClient initialCases={[]} />);
-    
+
     expect(screen.getByText("Fälle")).toBeInTheDocument();
     expect(screen.getByText("Verwalten Sie Ihre Zollanmeldungen")).toBeInTheDocument();
   });
 
   test("rendert 'Neuen Fall erstellen' Button", () => {
     render(<CasesClient initialCases={[]} />);
-    
+
     expect(screen.getByText("Neuen Fall erstellen")).toBeInTheDocument();
   });
 
   test("rendert Filter-Tabs", () => {
     render(<CasesClient initialCases={[]} />);
-    
+
     expect(screen.getByText("Aktive Fälle")).toBeInTheDocument();
     expect(screen.getByText("Archiviert")).toBeInTheDocument();
   });
 
-  test("zeigt leeren State wenn keine Fälle", () => {
+  test("zeigt leeren State wenn keine Fälle", async () => {
     render(<CasesClient initialCases={[]} />);
-    
-    expect(screen.getByText("Keine Fälle gefunden")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Keine Fälle gefunden")).toBeInTheDocument();
+    });
   });
 
-  test("zeigt 'Ersten Fall erstellen' bei leerem State", () => {
+  test("zeigt 'Ersten Fall anlegen' bei leerem State", async () => {
     render(<CasesClient initialCases={[]} />);
-    
-    expect(screen.getByText("Ersten Fall erstellen")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Ersten Fall anlegen")).toBeInTheDocument();
+    });
   });
 });
 
@@ -148,8 +168,13 @@ describe("Design System Integration in App", () => {
     expect(section).toBeInTheDocument();
   });
 
-  test("CasesClient nutzt Card für leeren State", () => {
+  test("CasesClient nutzt Card für leeren State", async () => {
     const { container } = render(<CasesClient initialCases={[]} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Keine Fälle gefunden")).toBeInTheDocument();
+    });
+
     const card = container.querySelector(".card");
     expect(card).toBeInTheDocument();
   });
