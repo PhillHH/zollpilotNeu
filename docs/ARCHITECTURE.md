@@ -87,14 +87,15 @@ Die öffentlichen Seiten (Landing, Blog, FAQ) nutzen das Design System v1 und si
 | Route | Beschreibung | Indexiert |
 |-------|--------------|-----------|
 | `/` | Landing Page mit Hero, Features, CTA | ✓ |
-| `/blog` | Blog-Index (MDX-basiert) | ✓ |
+| `/blog` | Blog-Index (API-basiert) | ✓ |
 | `/blog/[slug]` | Blog-Artikel | ✓ |
-| `/faq` | FAQ-Index (nach Kategorien) | ✓ |
-| `/faq/[slug]` | FAQ-Eintrag | ✓ |
+| `/faq` | FAQ-Index mit Akkordeon-Antworten | ✓ |
 | `/impressum` | Impressum | ✓ |
 | `/datenschutz` | Datenschutzerklärung | ✓ |
 | `/app/*` | App-Bereich | ✗ |
 | `/admin/*` | Admin-Bereich | ✗ |
+
+**Hinweis:** FAQ hat keine Einzelseiten mehr (`/faq/[slug]`). Antworten werden inline im Akkordeon-Stil angezeigt.
 
 ### SEO-Implementierung
 
@@ -105,16 +106,12 @@ Die öffentlichen Seiten (Landing, Blog, FAQ) nutzen das Design System v1 und si
 
 ### Content-Workflow
 
-Blog- und FAQ-Inhalte werden als MDX-Dateien verwaltet:
+Blog- und FAQ-Inhalte werden in PostgreSQL gespeichert und über die API bereitgestellt:
 
-```
-apps/web/content/
-├── blog/
-│   └── artikel.mdx
-└── faq/
-    └── frage.mdx
-```
+- `BlogPost`: Titel, Slug, Excerpt, Content (MDX), Status (DRAFT/PUBLISHED)
+- `FaqEntry`: Frage, Antwort, Kategorie, Reihenfolge, Status
 
+Siehe [CONTENT_MODEL.md](./CONTENT_MODEL.md) für das Datenmodell.
 Siehe [CONTENT_GUIDE.md](./CONTENT_GUIDE.md) für Formatierung und SEO-Regeln.
 
 ## App UI Layer (Designsystem v1)
@@ -617,13 +614,13 @@ The PDF generation system produces legally compliant, reproducible documents fro
 
 ### Content & SEO Layer
 
-The content system provides a public-facing blog and FAQ section for SEO and user education.
+The content system provides a public-facing blog and FAQ section for SEO and user education. Content is stored in PostgreSQL and served via read-only API endpoints.
 
 **Design Principles:**
-- **Static Content**: MDX files in the repository (no CMS)
+- **Database-Driven**: Content stored in PostgreSQL with Prisma ORM
+- **Draft/Publish Workflow**: ContentStatus enum (DRAFT | PUBLISHED)
 - **SEO Optimized**: Proper meta tags, canonical URLs, sitemap
 - **Crawlable**: Public pages indexed; app/admin excluded
-- **Maintainable**: Content editable via Git workflow
 - **Trust-First**: Clear separation of explanation, instruction, and product boundaries
 
 **Content Type Separation:**
@@ -640,32 +637,37 @@ See `docs/WORDING_GUIDE.md` for allowed/forbidden terminology.
 **Architecture:**
 
 ```
-apps/web/content/
-├── blog/                    # Blog articles
-│   ├── article-1.mdx
-│   └── article-2.mdx
-└── faq/                     # FAQ entries
-    ├── question-1.mdx
-    └── question-2.mdx
-         │
-         ▼
 ┌─────────────────┐
-│   Content Lib   │  ← Parses MDX, extracts frontmatter
-│ (lib/content.ts)│
+│   PostgreSQL    │  ← BlogPost, FaqEntry models
+│   (Prisma ORM)  │
 └─────────────────┘
          │
          ▼
 ┌─────────────────┐
-│  Next.js Pages  │  ← /blog, /blog/[slug], /faq, /faq/[slug]
-│  (SSG / SSR)    │
+│  FastAPI API    │  ← GET /content/blog, /content/blog/{slug}, /content/faq
+│  (Read-only)    │
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Next.js Pages  │  ← /blog, /blog/[slug], /faq (no /faq/[slug])
+│  (SSR)          │
 └─────────────────┘
 ```
 
-**MDX Features:**
-- **Frontmatter**: title, description, slug, published_at, tags, category
-- **Custom Components**: Callout, code blocks, tables
-- **gray-matter**: Parses YAML frontmatter
-- **next-mdx-remote**: Server-side MDX rendering
+**Data Models:**
+
+- **BlogPost**: id, title, slug, excerpt, content (MDX), status, published_at, meta_title, meta_description
+- **FaqEntry**: id, question, answer (MDX), category, order_index, status, related_blog_post_id
+- **ContentStatus**: DRAFT | PUBLISHED
+
+**API Endpoints (Public, no auth required):**
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /content/blog` | List published blog posts |
+| `GET /content/blog/{slug}` | Get single blog post by slug |
+| `GET /content/faq` | List FAQ entries grouped by category |
 
 **SEO Implementation:**
 - **sitemap.xml**: Auto-generated from content + static pages
@@ -680,19 +682,20 @@ apps/web/content/
 | `/` | Landing page | ✓ |
 | `/blog` | Blog index | ✓ |
 | `/blog/[slug]` | Blog article | ✓ |
-| `/faq` | FAQ index | ✓ |
-| `/faq/[slug]` | FAQ entry | ✓ |
+| `/faq` | FAQ index (accordion) | ✓ |
 | `/app/*` | App routes | ✗ |
 | `/admin/*` | Admin routes | ✗ |
 
-**Content Workflow:**
-1. Create/edit `.mdx` file in `apps/web/content/`
-2. Add frontmatter with required fields
-3. Write markdown content
-4. Commit and deploy
-5. Content automatically appears on site
+**Note:** FAQ no longer has individual `/faq/[slug]` pages. Answers are shown inline with accordions on the main FAQ page.
 
-See `docs/CONTENT_GUIDE.md` for detailed authoring instructions.
+**Content Workflow:**
+1. Create content in database with `status: DRAFT`
+2. Preview using admin tools (future feature)
+3. Publish by setting `status: PUBLISHED` and `published_at`
+4. Content automatically appears on public pages
+
+See `docs/CONTENT_MODEL.md` for detailed data model documentation.
+See `docs/CONTENT_GUIDE.md` for authoring guidelines.
 
 #### Preparation vs. Execution Boundary
 

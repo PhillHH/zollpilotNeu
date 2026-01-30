@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import type { ContentListItem } from "../lib/content";
+import type { BlogPostListItem } from "../lib/api/client";
 import { Section } from "../design-system/primitives/Section";
 import { Card } from "../design-system/primitives/Card";
-import { Badge } from "../design-system/primitives/Badge";
 
 type BlogIndexClientProps = {
-  posts: ContentListItem[];
+  posts: BlogPostListItem[];
 };
 
 /**
@@ -33,36 +32,29 @@ export function BlogIndexClient({ posts }: BlogIndexClientProps) {
         ) : (
           posts.map((post) => (
             <Link
-              key={post.meta.slug}
-              href={`/blog/${post.meta.slug}`}
+              key={post.slug}
+              href={`/blog/${post.slug}`}
               className="post-link"
             >
               <Card hoverable padding="lg" className="post-card">
                 <article>
-                  <h2 className="post-title">{post.meta.title}</h2>
-                  <p className="post-description">{post.meta.description}</p>
+                  <h2 className="post-title">{post.title}</h2>
+                  <p className="post-description">{post.excerpt}</p>
                   <div className="post-meta">
-                    <time
-                      dateTime={post.meta.published_at}
-                      className="post-date"
-                    >
-                      {new Date(post.meta.published_at).toLocaleDateString(
-                        "de-DE",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )}
-                    </time>
-                    {post.meta.tags && post.meta.tags.length > 0 && (
-                      <div className="post-tags">
-                        {post.meta.tags.map((tag) => (
-                          <Badge key={tag} variant="primary" size="sm">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
+                    {post.published_at && (
+                      <time
+                        dateTime={post.published_at}
+                        className="post-date"
+                      >
+                        {new Date(post.published_at).toLocaleDateString(
+                          "de-DE",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )}
+                      </time>
                     )}
                   </div>
                 </article>
@@ -137,11 +129,6 @@ export function BlogIndexClient({ posts }: BlogIndexClientProps) {
         .post-date {
           font-size: var(--text-sm);
           color: var(--color-text-light);
-        }
-
-        .post-tags {
-          display: flex;
-          gap: var(--space-xs);
         }
 
         :global(.empty-state) {

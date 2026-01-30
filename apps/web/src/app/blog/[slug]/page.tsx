@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getBlogPost, getBlogSlugs } from "../../lib/content";
+import { content, BlogPostDetail } from "../../lib/api/client";
 import { PublicLayout } from "../../components/PublicLayout";
 import { BlogPostClient } from "./BlogPostClient";
 import { MDXContent } from "../../components/MDXContent";
@@ -9,14 +9,20 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-export async function generateStaticParams() {
-  const slugs = getBlogSlugs();
-  return slugs.map((slug) => ({ slug }));
+async function fetchBlogPost(slug: string): Promise<BlogPostDetail | null> {
+  try {
+    const response = await content.getBlogPost(slug, {
+      cache: "no-store",
+    });
+    return response.data;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await fetchBlogPost(slug);
 
   if (!post) {
     return {
@@ -25,14 +31,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${post.meta.title} – ZollPilot`,
-    description: post.meta.description,
+    title: post.meta_title || `${post.title} – ZollPilot`,
+    description: post.meta_description || post.excerpt,
     openGraph: {
-      title: post.meta.title,
-      description: post.meta.description,
+      title: post.meta_title || post.title,
+      description: post.meta_description || post.excerpt,
       type: "article",
-      publishedTime: post.meta.published_at,
-      tags: post.meta.tags,
+      publishedTime: post.published_at || undefined,
     },
     alternates: {
       canonical: `/blog/${slug}`,
@@ -42,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await fetchBlogPost(slug);
 
   if (!post) {
     notFound();
@@ -50,7 +55,7 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <PublicLayout>
-      <BlogPostClient meta={post.meta}>
+      <BlogPostClient post={post}>
         <MDXContent source={post.content} />
       </BlogPostClient>
     </PublicLayout>

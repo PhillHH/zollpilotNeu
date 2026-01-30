@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getFaqByCategory } from "../lib/content";
+import { content, FaqCategory } from "../lib/api/client";
 import { PublicLayout } from "../components/PublicLayout";
 import { FaqIndexClient } from "./FaqIndexClient";
 
@@ -14,13 +14,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function FaqPage() {
-  const faqByCategory = getFaqByCategory();
+async function fetchFaqCategories(): Promise<FaqCategory[]> {
+  try {
+    const response = await content.listFaq({
+      cache: "no-store",
+    });
+    return response.data;
+  } catch {
+    // Return empty array on error (e.g., API not available)
+    return [];
+  }
+}
+
+export default async function FaqPage() {
+  const categories = await fetchFaqCategories();
 
   return (
     <PublicLayout>
-      <FaqIndexClient faqByCategory={faqByCategory} />
+      <FaqIndexClient categories={categories} />
     </PublicLayout>
   );
 }
-

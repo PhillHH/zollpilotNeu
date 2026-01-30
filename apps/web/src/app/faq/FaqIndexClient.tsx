@@ -1,20 +1,130 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import type { ContentListItem } from "../lib/content";
+import type { FaqCategory, FaqEntryItem } from "../lib/api/client";
 import { Section } from "../design-system/primitives/Section";
 import { Card } from "../design-system/primitives/Card";
 
 type FaqIndexClientProps = {
-  faqByCategory: Record<string, ContentListItem[]>;
+  categories: FaqCategory[];
+};
+
+type FaqAccordionItemProps = {
+  entry: FaqEntryItem;
 };
 
 /**
- * FAQ Index – Häufig gestellte Fragen, nach Kategorien gruppiert
+ * Single FAQ accordion item
  */
-export function FaqIndexClient({ faqByCategory }: FaqIndexClientProps) {
-  const categories = Object.keys(faqByCategory);
+function FaqAccordionItem({ entry }: FaqAccordionItemProps) {
+  const [isOpen, setIsOpen] = useState(false);
 
+  return (
+    <div className="faq-accordion-item">
+      <button
+        className={`faq-question-button ${isOpen ? "open" : ""}`}
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        <span className="faq-question-text">{entry.question}</span>
+        <span className="faq-toggle-icon">{isOpen ? "−" : "+"}</span>
+      </button>
+
+      {isOpen && (
+        <div className="faq-answer">
+          <div className="faq-answer-content">{entry.answer}</div>
+          {entry.related_blog_slug && (
+            <Link
+              href={`/blog/${entry.related_blog_slug}`}
+              className="faq-related-link"
+            >
+              Mehr erfahren →
+            </Link>
+          )}
+        </div>
+      )}
+
+      <style jsx>{`
+        .faq-accordion-item {
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          overflow: hidden;
+          background: var(--color-surface);
+        }
+
+        .faq-question-button {
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: var(--space-md) var(--space-lg);
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          text-align: left;
+          transition: background-color var(--transition-fast);
+        }
+
+        .faq-question-button:hover {
+          background: var(--color-background);
+        }
+
+        .faq-question-button.open {
+          background: var(--color-background);
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .faq-question-text {
+          font-size: var(--text-lg);
+          font-weight: var(--font-medium);
+          color: var(--color-text);
+          line-height: var(--leading-tight);
+          padding-right: var(--space-md);
+        }
+
+        .faq-toggle-icon {
+          font-size: var(--text-xl);
+          font-weight: var(--font-light);
+          color: var(--color-primary);
+          flex-shrink: 0;
+        }
+
+        .faq-answer {
+          padding: var(--space-lg);
+          background: var(--color-background);
+        }
+
+        .faq-answer-content {
+          font-size: var(--text-base);
+          color: var(--color-text-muted);
+          line-height: var(--leading-relaxed);
+          white-space: pre-wrap;
+        }
+
+        .faq-related-link {
+          display: inline-block;
+          margin-top: var(--space-md);
+          font-size: var(--text-sm);
+          font-weight: var(--font-medium);
+          color: var(--color-primary);
+          text-decoration: none;
+          transition: color var(--transition-fast);
+        }
+
+        .faq-related-link:hover {
+          color: var(--color-primary-hover);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/**
+ * FAQ Index – Häufig gestellte Fragen, nach Kategorien gruppiert
+ * Answers are shown inline in accordion style (no individual pages).
+ */
+export function FaqIndexClient({ categories }: FaqIndexClientProps) {
   return (
     <Section maxWidth="lg" padding="xl" className="faq-index">
       {/* Header */}
@@ -34,23 +144,11 @@ export function FaqIndexClient({ faqByCategory }: FaqIndexClientProps) {
       ) : (
         <div className="faq-categories">
           {categories.map((category) => (
-            <section key={category} className="faq-category">
-              <h2 className="category-title">{category}</h2>
+            <section key={category.category} className="faq-category">
+              <h2 className="category-title">{category.category}</h2>
               <div className="faq-list">
-                {faqByCategory[category].map((entry) => (
-                  <Link
-                    key={entry.meta.slug}
-                    href={`/faq/${entry.meta.slug}`}
-                    className="faq-link"
-                  >
-                    <Card hoverable padding="md" className="faq-card">
-                      <div className="faq-item">
-                        <h3 className="faq-question">{entry.meta.title}</h3>
-                        <p className="faq-preview">{entry.meta.description}</p>
-                        <span className="faq-more">Antwort lesen →</span>
-                      </div>
-                    </Card>
-                  </Link>
+                {category.entries.map((entry) => (
+                  <FaqAccordionItem key={entry.id} entry={entry} />
                 ))}
               </div>
             </section>
@@ -95,44 +193,7 @@ export function FaqIndexClient({ faqByCategory }: FaqIndexClientProps) {
         .faq-list {
           display: flex;
           flex-direction: column;
-          gap: var(--space-md);
-        }
-
-        :global(.faq-link) {
-          text-decoration: none;
-          color: inherit;
-          display: block;
-        }
-
-        :global(.faq-card) {
-          transition: border-color var(--transition-fast),
-                      transform var(--transition-fast) !important;
-        }
-
-        :global(.faq-card:hover) {
-          border-color: var(--color-primary) !important;
-          transform: translateX(4px);
-        }
-
-        .faq-question {
-          font-size: var(--text-lg);
-          font-weight: var(--font-medium);
-          color: var(--color-text);
-          margin: 0 0 var(--space-xs) 0;
-          line-height: var(--leading-tight);
-        }
-
-        .faq-preview {
-          font-size: var(--text-sm);
-          color: var(--color-text-muted);
-          margin: 0 0 var(--space-sm) 0;
-          line-height: var(--leading-relaxed);
-        }
-
-        .faq-more {
-          font-size: var(--text-sm);
-          font-weight: var(--font-medium);
-          color: var(--color-primary);
+          gap: var(--space-sm);
         }
 
         :global(.empty-state) {
