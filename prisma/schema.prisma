@@ -21,6 +21,7 @@ model User {
   credit_entries  CreditLedgerEntry[]
   events          UserEvent[]
   profile         UserProfile?
+  purchases       Purchase[]
 
   // Content audit relations
   created_blog_posts BlogPost[] @relation("BlogPostCreatedBy")
@@ -76,6 +77,7 @@ model Tenant {
   cases             Case[]
   credit_balance    TenantCreditBalance?
   credit_ledger     CreditLedgerEntry[]
+  purchases         Purchase[]
 
   plan Plan? @relation(fields: [plan_id], references: [id])
 
@@ -311,6 +313,56 @@ model CreditLedgerEntry {
   created_by User?  @relation(fields: [created_by_user_id], references: [id])
 
   @@index([tenant_id])
+  @@index([created_at])
+}
+
+// ============================================================================
+// Payments (Sprint 7 – U6)
+// ============================================================================
+
+/// Payment provider enum
+enum PaymentProvider {
+  STRIPE
+}
+
+/// Purchase type enum
+enum PurchaseType {
+  CREDITS    // Credit pack purchase
+  IZA_PASS   // IZA Pass (one-time)
+}
+
+/// Purchase status enum
+enum PurchaseStatus {
+  PENDING    // Checkout session created, awaiting payment
+  PAID       // Payment confirmed
+  FAILED     // Payment failed or expired
+  REFUNDED   // Payment refunded
+}
+
+/// Purchase record for tracking payments
+model Purchase {
+  id              String          @id @default(uuid())
+  tenant_id       String
+  user_id         String
+  provider        PaymentProvider @default(STRIPE)
+  provider_ref    String          // Stripe checkout session ID or payment intent ID
+  type            PurchaseType
+  amount_cents    Int             // Price in cents
+  currency        String          @default("EUR")
+  credits_amount  Int?            // Number of credits (for CREDITS type)
+  status          PurchaseStatus  @default(PENDING)
+  metadata_json   Json?           // Additional data (product name, etc.)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  paid_at         DateTime?       // When payment was confirmed
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [user_id], references: [id])
+
+  @@unique([provider, provider_ref])  // Ensure idempotency
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([status])
   @@index([created_at])
 }
 

@@ -22,6 +22,7 @@ from app.routes.admin_content import router as admin_content_router
 from app.routes.auth import router as auth_router
 from app.routes.billing import router as billing_router
 from app.routes.cases import router as cases_router
+from app.routes.checkout import router as checkout_router
 from app.routes.content import router as content_router
 from app.routes.health import router as health_router
 from app.routes.knowledge import router as knowledge_router
@@ -170,6 +171,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(billing_router)
+    app.include_router(checkout_router)
     app.include_router(cases_router)
     app.include_router(cases_procedure_router)
     app.include_router(content_router)

@@ -1,14 +1,16 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Section } from "../../design-system/primitives/Section";
 import { Card } from "../../design-system/primitives/Card";
 import { Button } from "../../design-system/primitives/Button";
 import { Alert } from "../../design-system/primitives/Alert";
-import { billing, BillingMe, CreditHistoryEntry, PricingTier, ApiError } from "../../lib/api/client";
+import { billing, BillingMe, CreditHistoryEntry, CheckoutProduct, ApiError } from "../../lib/api/client";
 
 type LoadingState = "loading" | "loaded" | "error";
-type PurchaseState = "idle" | "purchasing" | "success" | "error";
+type PurchaseState = "idle" | "purchasing" | "redirecting" | "completing" | "success" | "error";
+type CheckoutStatus = "none" | "success" | "cancel";
 
 /**
  * Formatiert den Reason-Code in lesbare deutsche Beschreibung
@@ -55,27 +57,32 @@ function formatDate(dateString: string): string {
  * Zeigt Credit-Guthaben, Preislogik, Preisvergleich und Historie.
  */
 export function BillingClient() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [billingInfo, setBillingInfo] = useState<BillingMe | null>(null);
   const [history, setHistory] = useState<CreditHistoryEntry[]>([]);
-  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
+  const [products, setProducts] = useState<CheckoutProduct[]>([]);
   const [loadState, setLoadState] = useState<LoadingState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [showPriceInfo, setShowPriceInfo] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<PricingTier | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<CheckoutProduct | null>(null);
+  const [checkoutStatus, setCheckoutStatus] = useState<CheckoutStatus>("none");
+  const [creditsAdded, setCreditsAdded] = useState<number>(0);
 
   const loadData = useCallback(async () => {
     try {
-      const [billingRes, historyRes, pricingRes] = await Promise.all([
+      const [billingRes, historyRes, productsRes] = await Promise.all([
         billing.me(),
         billing.history(20),
-        billing.pricing(),
+        billing.products(),
       ]);
       setBillingInfo(billingRes.data);
       setHistory(historyRes.data);
-      setPricingTiers(pricingRes.data.tiers);
+      setProducts(productsRes.data);
       setLoadState("loaded");
     } catch (err) {
       setError(
@@ -85,41 +92,68 @@ export function BillingClient() {
     }
   }, []);
 
+  // Handle checkout redirect
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id");
+
+    if (checkout === "success" && sessionId) {
+      // Complete the checkout
+      setCheckoutStatus("success");
+      setPurchaseState("completing");
+
+      billing.completeCheckout(sessionId)
+        .then((result) => {
+          setCreditsAdded(result.data.credits_added || 0);
+          setPurchaseState("success");
+          // Reload data after successful checkout
+          loadData();
+          // Clear URL params
+          router.replace("/app/billing", { scroll: false });
+        })
+        .catch((err) => {
+          const apiErr = err as ApiError;
+          setPurchaseError(apiErr.message || "Checkout-Abschluss fehlgeschlagen");
+          setPurchaseState("error");
+        });
+    } else if (checkout === "cancel") {
+      setCheckoutStatus("cancel");
+    }
+  }, [searchParams, router, loadData]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handlePurchase = useCallback(async (tier: PricingTier) => {
+  const handleCheckout = useCallback(async (product: CheckoutProduct) => {
     setPurchaseState("purchasing");
     setPurchaseError(null);
-    setSelectedTier(tier);
+    setSelectedProduct(product);
 
     try {
-      const result = await billing.purchaseCredits(tier.credits);
-      // Update billing info with new balance
-      if (billingInfo) {
-        setBillingInfo({
-          ...billingInfo,
-          credits: { balance: result.data.balance },
-        });
-      }
-      setPurchaseState("success");
-      // Reload history after purchase
-      const historyRes = await billing.history(20);
-      setHistory(historyRes.data);
+      const result = await billing.createCheckoutSession(product.id);
+      setPurchaseState("redirecting");
+      // Redirect to Stripe Checkout
+      window.location.href = result.data.checkout_url;
     } catch (err) {
       const apiErr = err as ApiError;
-      setPurchaseError(apiErr.message || "Kauf fehlgeschlagen");
+      setPurchaseError(apiErr.message || "Checkout konnte nicht gestartet werden");
       setPurchaseState("error");
     }
-  }, [billingInfo]);
+  }, []);
 
   const closePurchaseModal = useCallback(() => {
     setShowPurchaseModal(false);
     setPurchaseState("idle");
     setPurchaseError(null);
-    setSelectedTier(null);
+    setSelectedProduct(null);
   }, []);
+
+  const dismissCheckoutStatus = useCallback(() => {
+    setCheckoutStatus("none");
+    setCreditsAdded(0);
+    router.replace("/app/billing", { scroll: false });
+  }, [router]);
 
   if (loadState === "loading") {
     return (
@@ -152,6 +186,43 @@ export function BillingClient() {
     <Section>
       <div className="billing-page">
         <h1 className="page-title">Kosten & Credits</h1>
+
+        {/* Checkout Status Banners */}
+        {checkoutStatus === "success" && purchaseState === "success" && (
+          <Alert variant="success">
+            <div className="checkout-success">
+              <strong>Zahlung erfolgreich!</strong>
+              <p>{creditsAdded} Credit{creditsAdded !== 1 ? "s" : ""} wurden Ihrem Konto gutgeschrieben.</p>
+              <Button variant="ghost" onClick={dismissCheckoutStatus}>
+                Schließen
+              </Button>
+            </div>
+          </Alert>
+        )}
+
+        {checkoutStatus === "success" && purchaseState === "completing" && (
+          <Alert variant="info">
+            Verarbeite Zahlung...
+          </Alert>
+        )}
+
+        {checkoutStatus === "cancel" && (
+          <Alert variant="warning">
+            <div className="checkout-cancel">
+              <strong>Checkout abgebrochen</strong>
+              <p>Sie haben den Checkout abgebrochen. Sie können jederzeit erneut Credits kaufen.</p>
+              <Button variant="ghost" onClick={dismissCheckoutStatus}>
+                Schließen
+              </Button>
+            </div>
+          </Alert>
+        )}
+
+        {purchaseState === "error" && purchaseError && (
+          <Alert variant="error">
+            {purchaseError}
+          </Alert>
+        )}
 
         {/* Credit Balance Section */}
         <div className="section-grid">
@@ -696,6 +767,25 @@ export function BillingClient() {
           color: var(--color-text-muted);
           margin: 0 0 var(--space-lg) 0;
         }
+
+        /* Checkout Status Banners */
+        .checkout-success,
+        .checkout-cancel {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-xs);
+        }
+
+        .checkout-success p,
+        .checkout-cancel p {
+          margin: 0;
+        }
+
+        .checkout-success button,
+        .checkout-cancel button {
+          align-self: flex-start;
+          margin-top: var(--space-sm);
+        }
       `}</style>
 
       {/* Purchase Modal */}
@@ -709,18 +799,7 @@ export function BillingClient() {
               </button>
             </div>
             <div className="modal-body">
-              {purchaseState === "success" && selectedTier ? (
-                <div className="purchase-success">
-                  <div className="success-icon">✓</div>
-                  <p className="success-message">Kauf erfolgreich!</p>
-                  <p className="success-details">
-                    {selectedTier.credits} Credit{selectedTier.credits > 1 ? "s" : ""} wurden Ihrem Konto gutgeschrieben.
-                  </p>
-                  <Button variant="primary" onClick={closePurchaseModal}>
-                    Schließen
-                  </Button>
-                </div>
-              ) : purchaseState === "error" ? (
+              {purchaseState === "error" ? (
                 <>
                   <Alert variant="error">{purchaseError}</Alert>
                   <div style={{ marginTop: "var(--space-md)" }}>
@@ -729,9 +808,9 @@ export function BillingClient() {
                     </Button>
                   </div>
                 </>
-              ) : purchaseState === "purchasing" ? (
+              ) : purchaseState === "purchasing" || purchaseState === "redirecting" ? (
                 <div style={{ textAlign: "center", padding: "var(--space-xl)" }}>
-                  <p>Verarbeite Kauf...</p>
+                  <p>{purchaseState === "redirecting" ? "Weiterleitung zum Checkout..." : "Checkout wird vorbereitet..."}</p>
                 </div>
               ) : (
                 <>
@@ -739,25 +818,25 @@ export function BillingClient() {
                     Wählen Sie ein Paket:
                   </p>
                   <div className="tier-list">
-                    {pricingTiers.map((tier) => (
+                    {products.filter(p => p.type === "CREDITS").map((product) => (
                       <div
-                        key={tier.name}
+                        key={product.id}
                         className="tier-card"
-                        onClick={() => handlePurchase(tier)}
+                        onClick={() => handleCheckout(product)}
                         role="button"
                         tabIndex={0}
-                        onKeyDown={(e) => e.key === "Enter" && handlePurchase(tier)}
+                        onKeyDown={(e) => e.key === "Enter" && handleCheckout(product)}
                       >
                         <div className="tier-header">
-                          <span className="tier-name">{tier.name}</span>
-                          <span className="tier-price">{formatPrice(tier.price_cents)}</span>
+                          <span className="tier-name">{product.name}</span>
+                          <span className="tier-price">{formatPrice(product.price_cents)}</span>
                         </div>
-                        <p className="tier-description">{tier.description}</p>
+                        <p className="tier-description">{product.description}</p>
                       </div>
                     ))}
                   </div>
                   <p style={{ marginTop: "var(--space-lg)", fontSize: "var(--text-sm)", color: "var(--color-text-light)" }}>
-                    Hinweis: Dies ist eine Demo. In der Produktionsversion würde hier die Zahlung über einen Zahlungsanbieter erfolgen.
+                    Sichere Zahlung über Stripe. Sie werden zum Checkout weitergeleitet.
                   </p>
                 </>
               )}
