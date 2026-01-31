@@ -483,7 +483,120 @@ Get credit transaction history for the current user's tenant.
 | `PDF_EXPORT` | Credits consumed for PDF export |
 | `INITIAL_GRANT` | Initial credits on signup |
 | `PURCHASE` | Credits purchased |
+| `AUSFUELLHILFE` | Credits used for Ausfüllhilfe |
 | `REFUND` | Credits refunded |
+
+### Checkout (tag: checkout)
+
+Stripe Checkout integration for purchasing credits.
+
+#### `GET /billing/products`
+List available products for purchase.
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "string (product_id)",
+      "name": "string",
+      "description": "string",
+      "price_cents": "int",
+      "credits": "int",
+      "type": "CREDITS|IZA_PASS"
+    }
+  ]
+}
+```
+
+#### `POST /billing/checkout/session`
+Create a Stripe Checkout session.
+
+**Request Body:**
+```json
+{ "product_id": "string" }
+```
+
+**Response (200):**
+```json
+{
+  "data": {
+    "checkout_url": "string (Stripe Checkout URL)",
+    "session_id": "string (Stripe session ID)",
+    "product_id": "string",
+    "amount_cents": "int",
+    "currency": "string"
+  }
+}
+```
+
+**Errors:**
+- 422 `VALIDATION_ERROR`: Invalid product_id
+
+#### `POST /billing/webhook`
+Handle Stripe webhook events. No authentication required.
+
+**Request Body:** Stripe webhook payload (JSON)
+
+**Headers:**
+- `Stripe-Signature`: Webhook signature (verified in production)
+
+**Response (200):**
+```json
+{
+  "received": "bool",
+  "processed": "bool",
+  "reason": "string (optional, why not processed)"
+}
+```
+
+#### `GET /billing/purchases`
+List purchases for the current tenant.
+
+**Query Parameters:**
+- `limit`: Max entries to return (default: 20, max: 100)
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "type": "CREDITS|IZA_PASS",
+      "status": "PENDING|PAID|FAILED|REFUNDED",
+      "amount_cents": "int",
+      "currency": "string",
+      "credits_amount": "int|null",
+      "product_name": "string|null",
+      "created_at": "datetime",
+      "paid_at": "datetime|null"
+    }
+  ]
+}
+```
+
+#### `GET /billing/purchases/{id}`
+Get a single purchase (receipt).
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "type": "CREDITS|IZA_PASS",
+    "status": "PENDING|PAID|FAILED|REFUNDED",
+    "amount_cents": "int",
+    "currency": "string",
+    "credits_amount": "int|null",
+    "product_name": "string|null",
+    "created_at": "datetime",
+    "paid_at": "datetime|null"
+  }
+}
+```
+
+**Errors:**
+- 404 `NOT_FOUND`: Purchase not found or not accessible
 
 ### Profile (tag: profile)
 

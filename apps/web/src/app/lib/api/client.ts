@@ -352,6 +352,76 @@ export type CreditHistoryEntry = {
 type BillingMeResponse = { data: BillingMe };
 type CreditHistoryResponse = { data: CreditHistoryEntry[] };
 
+// --- Credit Purchase/Spend Types ---
+
+export type CreditPurchaseResult = {
+  balance: number;
+  purchased: number;
+  price_cents: number;
+  currency: string;
+};
+
+export type CreditSpendResult = {
+  balance: number;
+  spent: number;
+  case_id: string;
+};
+
+export type PricingTier = {
+  name: string;
+  credits: number;
+  price_cents: number;
+  currency: string;
+  description: string;
+};
+
+export type PricingInfo = {
+  tiers: PricingTier[];
+  credit_unit_price_cents: number;
+  currency: string;
+};
+
+type CreditPurchaseResponse = { data: CreditPurchaseResult };
+type CreditSpendResponse = { data: CreditSpendResult };
+type PricingInfoResponse = { data: PricingInfo };
+
+// --- Checkout Types ---
+
+export type CheckoutProduct = {
+  id: string;
+  name: string;
+  description: string;
+  price_cents: number;
+  credits: number;
+  type: "CREDITS" | "IZA_PASS";
+};
+
+export type CheckoutSessionResult = {
+  checkout_url: string;
+  session_id: string;
+  product_id: string;
+  amount_cents: number;
+  currency: string;
+};
+
+export type PurchaseInfo = {
+  id: string;
+  type: string;
+  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  amount_cents: number;
+  currency: string;
+  credits_amount: number | null;
+  product_name: string | null;
+  created_at: string;
+  paid_at: string | null;
+};
+
+type ProductsListResponse = { data: CheckoutProduct[] };
+type CheckoutSessionResponse = { data: CheckoutSessionResult };
+type PurchasesListResponse = { data: PurchaseInfo[] };
+type PurchaseResponse = { data: PurchaseInfo };
+type CompleteCheckoutResponse = { data: { status: string; purchase_id: string; credits_added?: number } };
+
 // --- Billing API ---
 
 export const billing = {
@@ -365,7 +435,69 @@ export const billing = {
     apiRequest<CreditHistoryResponse>(`/billing/history${limit ? `?limit=${limit}` : ""}`, {
       credentials: "include",
       ...init
-    })
+    }),
+
+  pricing: (init?: RequestInit) =>
+    apiRequest<PricingInfoResponse>("/billing/pricing", {
+      credentials: "include",
+      ...init
+    }),
+
+  purchaseCredits: (amount: number, init?: RequestInit) =>
+    apiRequest<CreditPurchaseResponse>("/billing/credits/purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ amount }),
+      ...init
+    }),
+
+  spendCredits: (caseId: string, init?: RequestInit) =>
+    apiRequest<CreditSpendResponse>("/billing/credits/spend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ case_id: caseId }),
+      ...init
+    }),
+
+  // --- Checkout endpoints ---
+
+  products: (init?: RequestInit) =>
+    apiRequest<ProductsListResponse>("/billing/products", {
+      credentials: "include",
+      ...init
+    }),
+
+  createCheckoutSession: (productId: string, init?: RequestInit) =>
+    apiRequest<CheckoutSessionResponse>("/billing/checkout/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ product_id: productId }),
+      ...init
+    }),
+
+  completeCheckout: (sessionId: string, init?: RequestInit) =>
+    apiRequest<CompleteCheckoutResponse>("/billing/checkout/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ session_id: sessionId }),
+      ...init
+    }),
+
+  purchases: (limit?: number, init?: RequestInit) =>
+    apiRequest<PurchasesListResponse>(`/billing/purchases${limit ? `?limit=${limit}` : ""}`, {
+      credentials: "include",
+      ...init
+    }),
+
+  purchase: (purchaseId: string, init?: RequestInit) =>
+    apiRequest<PurchaseResponse>(`/billing/purchases/${purchaseId}`, {
+      credentials: "include",
+      ...init
+    }),
 };
 
 // --- Procedures Types ---

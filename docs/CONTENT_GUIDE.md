@@ -70,6 +70,34 @@ Diese Trennung muss in jedem Artikel klar sein. Niemals Erklärungen mit falsche
 - Länderspezifische Besonderheiten (UK, USA, China)
 - Steuerliche Hintergründe (EUSt, Zollsätze)
 
+### Fachartikel (seit Sprint 6)
+
+**Zweck**: Tiefgehende Problemlösung, SEO-Hebel, Conversion
+
+| Eigenschaft | Beschreibung |
+|-------------|--------------|
+| Länge | 800–2000 Wörter |
+| Struktur | Problem → Komplexität → Fehler → Lösung → ZollPilot-Hilfe |
+| Fokus | Konkretes Problem lösen, Vertrauen aufbauen |
+| Tonalität | Fachlich, ehrlich, hilfreich |
+
+**Fachartikel-Struktur (6 Abschnitte):**
+
+1. **Problemdefinition** – Was ist das Problem, wen betrifft es?
+2. **Warum ist das schwierig?** – Hintergründe, Systemlogik
+3. **Typische Fehler** – Was geht oft schief?
+4. **Was Sie vorbereiten müssen** – Konkrete Checkliste
+5. **Wie ZollPilot dabei unterstützt** – Neutral, nicht werblich
+6. **CTA** – „Mit ZollPilot vorbereiten" (Link zu /register)
+
+**Aktuelle Artikelserien:**
+
+| Serie | Thema | Artikel |
+|-------|-------|---------|
+| IZA-Basics | Internet-Zollanmeldung für Privatpersonen | 5 Artikel |
+
+Siehe [ARTICLE_SERIES_IZA.md](./CONTENT/ARTICLE_SERIES_IZA.md) für Details.
+
 ### FAQ
 
 **Zweck**: Kurze, konkrete Antworten auf häufige Fragen

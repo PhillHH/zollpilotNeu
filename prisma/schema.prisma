@@ -21,6 +21,7 @@ model User {
   credit_entries  CreditLedgerEntry[]
   events          UserEvent[]
   profile         UserProfile?
+  purchases       Purchase[]
 
   // Content audit relations
   created_blog_posts BlogPost[] @relation("BlogPostCreatedBy")
@@ -76,6 +77,7 @@ model Tenant {
   cases             Case[]
   credit_balance    TenantCreditBalance?
   credit_ledger     CreditLedgerEntry[]
+  purchases         Purchase[]
 
   plan Plan? @relation(fields: [plan_id], references: [id])
 
@@ -314,6 +316,56 @@ model CreditLedgerEntry {
   @@index([created_at])
 }
 
+// ============================================================================
+// Payments (Sprint 7 – U6)
+// ============================================================================
+
+/// Payment provider enum
+enum PaymentProvider {
+  STRIPE
+}
+
+/// Purchase type enum
+enum PurchaseType {
+  CREDITS    // Credit pack purchase
+  IZA_PASS   // IZA Pass (one-time)
+}
+
+/// Purchase status enum
+enum PurchaseStatus {
+  PENDING    // Checkout session created, awaiting payment
+  PAID       // Payment confirmed
+  FAILED     // Payment failed or expired
+  REFUNDED   // Payment refunded
+}
+
+/// Purchase record for tracking payments
+model Purchase {
+  id              String          @id @default(uuid())
+  tenant_id       String
+  user_id         String
+  provider        PaymentProvider @default(STRIPE)
+  provider_ref    String          // Stripe checkout session ID or payment intent ID
+  type            PurchaseType
+  amount_cents    Int             // Price in cents
+  currency        String          @default("EUR")
+  credits_amount  Int?            // Number of credits (for CREDITS type)
+  status          PurchaseStatus  @default(PENDING)
+  metadata_json   Json?           // Additional data (product name, etc.)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  paid_at         DateTime?       // When payment was confirmed
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [user_id], references: [id])
+
+  @@unique([provider, provider_ref])  // Ensure idempotency
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
+}
+
 // --- Content Models (Blog & FAQ) ---
 
 model BlogPost {
@@ -375,4 +427,56 @@ enum ContentStatus {
   DRAFT
   PUBLISHED
 }
+
+// ============================================================================
+// Knowledge Base (Sprint 6C – C6)
+// ============================================================================
+
+/// Procedure types for knowledge entries
+enum ProcedureType {
+  IZA   // Internet-Zollanmeldung (Privatpersonen)
+  IPK   // Import-Paketverkehr
+  IAA   // Internet-Ausfuhranmeldung
+  ALL   // Applies to all procedures
+}
+
+/// Knowledge topic for grouping entries
+model KnowledgeTopic {
+  id          String   @id @default(uuid())
+  code        String   @unique  // e.g., "zollwert", "warennummer"
+  name        String             // e.g., "Zollwert", "Warennummer"
+  description String?            // Short description of the topic
+  order_index Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  entries KnowledgeEntry[]
+
+  @@index([code])
+  @@index([order_index])
+}
+
+/// Knowledge entry with explanation content
+model KnowledgeEntry {
+  id             String        @id @default(uuid())
+  title          String                  // e.g., "Was ist der Zollwert?"
+  summary        String                  // Short summary (1-2 sentences)
+  explanation    String                  // Full explanation in Markdown
+  applies_to     ProcedureType @default(ALL)  // Which procedure this applies to
+  related_fields String[]      @default([])   // Related form fields (e.g., ["zollwert", "versandkosten"])
+  version        Int           @default(1)
+  status         ContentStatus @default(DRAFT)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  // Topic relation
+  topic_id String?
+  topic    KnowledgeTopic? @relation(fields: [topic_id], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([applies_to])
+  @@index([topic_id])
+}
+
 
