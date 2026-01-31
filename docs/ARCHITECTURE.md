@@ -128,6 +128,27 @@ Blog- und FAQ-Inhalte werden in PostgreSQL gespeichert und über die API bereitg
 Siehe [CONTENT_MODEL.md](./CONTENT_MODEL.md) für das Datenmodell.
 Siehe [CONTENT_GUIDE.md](./CONTENT_GUIDE.md) für Formatierung und SEO-Regeln.
 
+### Knowledge Base (seit Sprint 6)
+
+Die Knowledge Base speichert erklärende Inhalte zu Zollthemen:
+
+- **KnowledgeTopic**: Gruppierung (z. B. "Zollwert", "Warennummer")
+- **KnowledgeEntry**: Einzelne Erklärung mit Markdown-Inhalt
+
+**Verwendung:**
+- Wizard: Erklärtexte zu Formularfeldern
+- Mapping View: Kontextinformationen
+- Zukünftig: AI-Kontext für Antworten
+
+**Wichtig:** Keine Business-Logik, keine Berechnungen, keine automatischen Entscheidungen.
+
+**API-Endpunkte:**
+- `GET /knowledge/topics` – Liste aller Topics
+- `GET /knowledge/entries` – Gefilterte Einträge
+- `GET /knowledge/entries/{id}` – Einzelner Eintrag
+
+Siehe [KNOWLEDGE_BASE.md](./KNOWLEDGE_BASE.md) für Details.
+
 ## App UI Layer (Designsystem v1)
 
 Der App-Bereich (`/app/*`) nutzt das gleiche Design System wie die öffentlichen Seiten, mit spezialisierten Komponenten für den Anwendungskontext.

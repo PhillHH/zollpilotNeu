@@ -24,6 +24,7 @@ from app.routes.billing import router as billing_router
 from app.routes.cases import router as cases_router
 from app.routes.content import router as content_router
 from app.routes.health import router as health_router
+from app.routes.knowledge import router as knowledge_router
 from app.routes.procedures import router as procedures_router
 from app.routes.procedures import cases_procedure_router
 from app.routes.lifecycle import router as lifecycle_router
@@ -172,6 +173,7 @@ def create_app() -> FastAPI:
     app.include_router(cases_router)
     app.include_router(cases_procedure_router)
     app.include_router(content_router)
+    app.include_router(knowledge_router)
     app.include_router(lifecycle_router)
     app.include_router(pdf_router)
     app.include_router(procedures_router)

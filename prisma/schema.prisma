@@ -376,3 +376,55 @@ enum ContentStatus {
   PUBLISHED
 }
 
+// ============================================================================
+// Knowledge Base (Sprint 6C – C6)
+// ============================================================================
+
+/// Procedure types for knowledge entries
+enum ProcedureType {
+  IZA   // Internet-Zollanmeldung (Privatpersonen)
+  IPK   // Import-Paketverkehr
+  IAA   // Internet-Ausfuhranmeldung
+  ALL   // Applies to all procedures
+}
+
+/// Knowledge topic for grouping entries
+model KnowledgeTopic {
+  id          String   @id @default(uuid())
+  code        String   @unique  // e.g., "zollwert", "warennummer"
+  name        String             // e.g., "Zollwert", "Warennummer"
+  description String?            // Short description of the topic
+  order_index Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  entries KnowledgeEntry[]
+
+  @@index([code])
+  @@index([order_index])
+}
+
+/// Knowledge entry with explanation content
+model KnowledgeEntry {
+  id             String        @id @default(uuid())
+  title          String                  // e.g., "Was ist der Zollwert?"
+  summary        String                  // Short summary (1-2 sentences)
+  explanation    String                  // Full explanation in Markdown
+  applies_to     ProcedureType @default(ALL)  // Which procedure this applies to
+  related_fields String[]      @default([])   // Related form fields (e.g., ["zollwert", "versandkosten"])
+  version        Int           @default(1)
+  status         ContentStatus @default(DRAFT)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  // Topic relation
+  topic_id String?
+  topic    KnowledgeTopic? @relation(fields: [topic_id], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([applies_to])
+  @@index([topic_id])
+}
+
+
