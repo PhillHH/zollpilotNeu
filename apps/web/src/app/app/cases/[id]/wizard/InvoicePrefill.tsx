@@ -107,10 +107,10 @@ export function InvoicePrefill({
     onClose();
   }, [suggestions, acceptedFields, onApplySuggestion, onClose]);
 
-  const getConfidenceLabel = (confidence: number): { text: string; color: "success" | "warning" | "error" } => {
-    if (confidence >= 0.8) return { text: "Hoch", color: "success" };
-    if (confidence >= 0.5) return { text: "Mittel", color: "warning" };
-    return { text: "Niedrig", color: "error" };
+  const getConfidenceLabel = (confidence: number): { text: string; variant: "success" | "warning" | "danger" } => {
+    if (confidence >= 0.8) return { text: "Hoch", variant: "success" };
+    if (confidence >= 0.5) return { text: "Mittel", variant: "warning" };
+    return { text: "Niedrig", variant: "danger" };
   };
 
   const formatValue = (value: unknown): string => {
@@ -224,7 +224,7 @@ export function InvoicePrefill({
 
               <div className="suggestions-list">
                 {suggestions.suggestions.map((suggestion) => {
-                  const { text: confLabel, color } = getConfidenceLabel(suggestion.confidence);
+                  const { text: confLabel, variant } = getConfidenceLabel(suggestion.confidence);
                   const isAccepted = acceptedFields[suggestion.field_key] || false;
                   const hasExisting = hasExistingValue(suggestion.field_key);
 
@@ -241,7 +241,7 @@ export function InvoicePrefill({
                       <div className="suggestion-content">
                         <div className="suggestion-header">
                           <span className="label">{suggestion.display_label}</span>
-                          <Badge status={color === "success" ? "active" : color === "warning" ? "warning" : "error"}>
+                          <Badge variant={variant}>
                             {confLabel}
                           </Badge>
                         </div>
