@@ -835,6 +835,77 @@ List all unique FAQ categories.
 { "data": ["string"] }
 ```
 
+### Prefill (tag: prefill)
+
+Invoice/receipt upload and field extraction for faster data entry.
+
+#### `POST /prefill/upload`
+Upload an invoice or receipt and extract field suggestions.
+
+**Request:**
+- Content-Type: `multipart/form-data`
+- `file`: PDF, JPG, or PNG (max 10 MB)
+
+**Response (200):**
+```json
+{
+  "data": {
+    "suggestions": [
+      {
+        "field_key": "string (e.g., value_amount)",
+        "value": "any",
+        "confidence": "float (0.0 - 1.0)",
+        "source": "string (e.g., regex_total)",
+        "display_label": "string (German label)"
+      }
+    ],
+    "items": [
+      {
+        "name": "string",
+        "price": "float|null",
+        "currency": "string|null",
+        "confidence": "float"
+      }
+    ],
+    "raw_text_preview": "string|null (first 500 chars, debug only)",
+    "extraction_method": "string (pdf_text|image_unsupported|none)",
+    "warnings": ["string"]
+  }
+}
+```
+
+**Errors:**
+- 400 `INVALID_FILE_TYPE`: Unsupported file format
+- 400 `FILE_TOO_LARGE`: File exceeds 10 MB
+- 400 `EMPTY_FILE`: Uploaded file is empty
+
+**Privacy:**
+- Files are processed in memory only
+- No permanent storage
+- No external services
+- No logging of file contents
+
+#### `GET /prefill/info`
+Get information about the prefill feature.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "supported_formats": ["PDF", "JPG", "PNG"],
+    "max_file_size_mb": 10,
+    "features": ["string"],
+    "limitations": ["string"],
+    "privacy": {
+      "storage": "string",
+      "external_services": "string",
+      "training": "string",
+      "logging": "string"
+    }
+  }
+}
+```
+
 
 
 

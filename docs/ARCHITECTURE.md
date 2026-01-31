@@ -485,6 +485,58 @@ The Wizard Renderer is intentionally decoupled from the backend Procedure Engine
 - Frontend: Renders UI, handles UX, manages local state
 - This allows swapping the wizard UI without touching backend logic
 
+### Prefill Layer (Invoice Extraction)
+
+The Prefill Layer enables faster data entry by extracting field suggestions from uploaded invoices or order confirmations.
+
+**Key Principles:**
+- **No Auto-Fill**: Suggestions must be manually confirmed by the user
+- **Field-by-Field Acceptance**: Users select which suggestions to apply
+- **GDPR-First**: No external services, no storage, no training
+- **Transparency**: Confidence scores indicate extraction quality
+
+**Architecture:**
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Upload    │────▶│  Extractor  │────▶│ Suggestions │
+│  PDF/Image  │     │ (Heuristic) │     │  + Scores   │
+└─────────────┘     └─────────────┘     └─────────────┘
+                          │
+                          ▼
+                    ┌─────────────┐
+                    │   Regex     │
+                    │   Patterns  │
+                    └─────────────┘
+```
+
+**Extraction Methods (v1):**
+- PDF text extraction (pdfplumber/PyPDF2)
+- Regex-based pattern matching for:
+  - Total amounts (near "Gesamt", "Total")
+  - Currency symbols (€, $, £, CHF)
+  - Shipping costs (near "Versand", "Shipping")
+  - Merchant names (patterns like "von:", "Seller:")
+  - Line items (product + price patterns)
+
+**Privacy Guarantees:**
+- Processing in memory only (no disk storage)
+- No external API calls
+- Immediate disposal after response
+- No logging of file contents
+
+**API Endpoint:**
+- `POST /prefill/upload` – Upload document, receive suggestions
+- `GET /prefill/info` – Feature information and limitations
+
+**Frontend Integration:**
+- Upload CTA on first wizard step
+- Modal with suggestion list and checkboxes
+- Confidence badges (High/Medium/Low)
+- Warning for existing values
+
+See `docs/FEATURES/PREFILL.md` for detailed documentation.
+
 ### Billing/Credits (No-Payment Foundation)
 
 The billing system provides plan management and credit tracking without payment
