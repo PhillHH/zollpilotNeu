@@ -1000,6 +1000,101 @@ type CategoriesResponse = { data: string[] };
 
 // --- Admin Content API ---
 
+// --- Prefill Types ---
+
+export type FieldSuggestion = {
+  field_key: string;
+  value: unknown;
+  confidence: number;
+  source: string;
+  display_label: string;
+};
+
+export type ItemSuggestion = {
+  name: string;
+  price: number | null;
+  currency: string | null;
+  confidence: number;
+};
+
+export type PrefillSuggestions = {
+  suggestions: FieldSuggestion[];
+  items: ItemSuggestion[];
+  raw_text_preview: string | null;
+  extraction_method: string;
+  warnings: string[];
+};
+
+export type PrefillInfo = {
+  supported_formats: string[];
+  max_file_size_mb: number;
+  features: string[];
+  limitations: string[];
+  privacy: {
+    storage: string;
+    external_services: string;
+    training: string;
+    logging: string;
+  };
+};
+
+type PrefillUploadResponse = { data: PrefillSuggestions };
+type PrefillInfoResponse = { data: PrefillInfo };
+
+// --- Prefill API ---
+
+export const prefill = {
+  /**
+   * Upload an invoice/receipt and extract field suggestions.
+   * Accepts PDF, JPG, PNG (max 10 MB).
+   */
+  upload: async (file: File): Promise<PrefillSuggestions> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/prefill/upload`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "X-Contract-Version": "1",
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let payload: unknown = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      const errorPayload = payload as { error?: { code?: string; message?: string; details?: unknown }; requestId?: string } | null;
+      const error = errorPayload?.error ?? {};
+      throw {
+        code: error.code ?? "UNKNOWN_ERROR",
+        message: error.message ?? "Upload failed.",
+        details: error.details,
+        requestId: errorPayload?.requestId ?? response.headers.get("X-Request-Id"),
+        status: response.status
+      } satisfies ApiError;
+    }
+
+    const result = await response.json() as PrefillUploadResponse;
+    return result.data;
+  },
+
+  /**
+   * Get information about the prefill feature.
+   */
+  info: (init?: RequestInit) =>
+    apiRequest<PrefillInfoResponse>("/prefill/info", {
+      credentials: "include",
+      ...init
+    }),
+};
+
 export const adminContent = {
   blog: {
     list: (status?: "DRAFT" | "PUBLISHED", init?: RequestInit) =>

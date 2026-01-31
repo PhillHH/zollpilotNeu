@@ -34,6 +34,42 @@ Konsistente Sprache für ZollPilot – Klarheit über Produktpositionierung.
 - "ZollPilot bereitet Ihre Zollanmeldung vor"
 - "PDF als Übersicht für das Zollformular"
 
+## Scan & Vorschläge
+
+Wording für die Prefill-/Scan-Funktion:
+
+### Erlaubt
+
+| Kontext | Erlaubt |
+|---------|---------|
+| Feature-Name | "Vorschläge aus Rechnung", "Rechnungs-Scan" |
+| Aktion | "Vorschläge anzeigen", "Felder übernehmen", "Werte vorschlagen" |
+| Status | "Erkannt", "Vorgeschlagen", "Unsicher" |
+| Button | "Vorschläge aus Rechnung", "X Felder übernehmen" |
+
+### Verboten
+
+| Verboten | Problem | Alternative |
+|----------|---------|-------------|
+| "automatisch ausfüllen" | suggeriert Auto-Aktion | "Felder vorschlagen" |
+| "KI-Erkennung" | keine KI in v1 | "Texterkennung" |
+| "garantiert korrekt" | nie garantieren | "Bitte prüfen" |
+| "einfach übernehmen" | zu leichtfertig | "nach Prüfung übernehmen" |
+
+### Hinweistexte
+
+**Modal-Header:**
+> "Bitte prüfen – ZollPilot entscheidet nicht."
+
+**Upload-Area:**
+> "Laden Sie eine Rechnung oder Bestellbestätigung hoch – ZollPilot schlägt passende Werte vor."
+
+**Niedrige Konfidenz:**
+> "Einige Vorschläge haben eine niedrige Konfidenz. Bitte besonders sorgfältig prüfen."
+
+**Bereits ausgefüllt:**
+> "Feld bereits ausgefüllt – wird überschrieben"
+
 ## Disclaimer (Global)
 
 Standard-Disclaimer für Footer und PDFs:

@@ -26,6 +26,7 @@ import {
 import { ProcedureSelector } from "./ProcedureSelector";
 import { FieldRenderer } from "./FieldRenderer";
 import { MappingView } from "./mapping";
+import { InvoicePrefill } from "./InvoicePrefill";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -71,6 +72,7 @@ export function WizardClient({ caseId }: WizardClientProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMappingView, setShowMappingView] = useState(false);
+  const [showPrefill, setShowPrefill] = useState(false);
 
   // Debounce timers
   const [debounceTimers, setDebounceTimers] = useState<Record<string, NodeJS.Timeout>>({});
@@ -356,6 +358,14 @@ export function WizardClient({ caseId }: WizardClientProps) {
     [validationErrors]
   );
 
+  // Handle prefill suggestion application
+  const handleApplySuggestion = useCallback(
+    (fieldKey: string, value: unknown) => {
+      handleFieldChange(fieldKey, value);
+    },
+    [handleFieldChange]
+  );
+
   // Loading state
   if (loading) {
     return (
@@ -449,6 +459,26 @@ export function WizardClient({ caseId }: WizardClientProps) {
             anschließend selbst beim Zoll vor (wir zeigen Ihnen wie).
           </Alert>
         </div>
+      )}
+
+      {/* Prefill CTA */}
+      {!isReadonly && currentStepIndex === 0 && (
+        <Card padding="md" className="prefill-cta-card">
+          <div className="prefill-cta">
+            <div className="prefill-cta-content">
+              <span className="prefill-icon">📄</span>
+              <div>
+                <strong>Rechnung hochladen?</strong>
+                <p className="prefill-hint">
+                  Laden Sie eine Rechnung oder Bestellbestätigung hoch – ZollPilot schlägt passende Werte vor.
+                </p>
+              </div>
+            </div>
+            <Button variant="secondary" onClick={() => setShowPrefill(true)}>
+              Vorschläge aus Rechnung
+            </Button>
+          </div>
+        </Card>
       )}
 
       {/* Error Banner */}
@@ -681,7 +711,61 @@ export function WizardClient({ caseId }: WizardClientProps) {
             max-height: 95vh;
           }
         }
+
+        /* Prefill CTA */
+        :global(.prefill-cta-card) {
+          margin-bottom: var(--space-lg);
+          background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-background) 100%);
+          border: 1px solid var(--color-border);
+        }
+
+        .prefill-cta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--space-md);
+        }
+
+        .prefill-cta-content {
+          display: flex;
+          align-items: center;
+          gap: var(--space-md);
+        }
+
+        .prefill-icon {
+          font-size: 2rem;
+        }
+
+        .prefill-hint {
+          margin: var(--space-xs) 0 0 0;
+          font-size: var(--text-sm);
+          color: var(--color-text-muted);
+        }
+
+        @media (max-width: 768px) {
+          .prefill-cta {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .prefill-cta-content {
+            flex-direction: column;
+          }
+        }
       `}</style>
+
+      {/* Prefill Modal */}
+      {showPrefill && (
+        <div className="mapping-overlay" onClick={() => setShowPrefill(false)}>
+          <div className="mapping-modal" onClick={(e) => e.stopPropagation()}>
+            <InvoicePrefill
+              onApplySuggestion={handleApplySuggestion}
+              onClose={() => setShowPrefill(false)}
+              existingValues={fieldValues}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Mapping View Modal */}
       {showMappingView && procedure && (
