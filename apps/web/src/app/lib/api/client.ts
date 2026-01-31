@@ -352,6 +352,39 @@ export type CreditHistoryEntry = {
 type BillingMeResponse = { data: BillingMe };
 type CreditHistoryResponse = { data: CreditHistoryEntry[] };
 
+// --- Credit Purchase/Spend Types ---
+
+export type CreditPurchaseResult = {
+  balance: number;
+  purchased: number;
+  price_cents: number;
+  currency: string;
+};
+
+export type CreditSpendResult = {
+  balance: number;
+  spent: number;
+  case_id: string;
+};
+
+export type PricingTier = {
+  name: string;
+  credits: number;
+  price_cents: number;
+  currency: string;
+  description: string;
+};
+
+export type PricingInfo = {
+  tiers: PricingTier[];
+  credit_unit_price_cents: number;
+  currency: string;
+};
+
+type CreditPurchaseResponse = { data: CreditPurchaseResult };
+type CreditSpendResponse = { data: CreditSpendResult };
+type PricingInfoResponse = { data: PricingInfo };
+
 // --- Billing API ---
 
 export const billing = {
@@ -365,7 +398,31 @@ export const billing = {
     apiRequest<CreditHistoryResponse>(`/billing/history${limit ? `?limit=${limit}` : ""}`, {
       credentials: "include",
       ...init
-    })
+    }),
+
+  pricing: (init?: RequestInit) =>
+    apiRequest<PricingInfoResponse>("/billing/pricing", {
+      credentials: "include",
+      ...init
+    }),
+
+  purchaseCredits: (amount: number, init?: RequestInit) =>
+    apiRequest<CreditPurchaseResponse>("/billing/credits/purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ amount }),
+      ...init
+    }),
+
+  spendCredits: (caseId: string, init?: RequestInit) =>
+    apiRequest<CreditSpendResponse>("/billing/credits/spend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ case_id: caseId }),
+      ...init
+    }),
 };
 
 // --- Procedures Types ---

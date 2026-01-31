@@ -177,6 +177,24 @@ class FakeTenantCreditBalanceModel:
             self._by_tenant_id[tenant_id] = record
             return record
 
+    async def update(self, where: dict, data: dict) -> dict:
+        tenant_id = where["tenant_id"]
+        existing = self._by_tenant_id.get(tenant_id)
+        if existing:
+            # Handle increment or decrement
+            if "balance" in data:
+                balance_op = data["balance"]
+                if isinstance(balance_op, dict):
+                    if "increment" in balance_op:
+                        existing["balance"] += balance_op["increment"]
+                    if "decrement" in balance_op:
+                        existing["balance"] -= balance_op["decrement"]
+                else:
+                    existing["balance"] = balance_op
+            existing["updated_at"] = datetime.utcnow()
+            return existing
+        raise ValueError("Record not found")
+
 
 class FakeCreditLedgerEntryModel:
     def __init__(self) -> None:
@@ -197,10 +215,58 @@ class FakeCreditLedgerEntryModel:
 
     async def find_many(self, where: dict, order: dict | None = None, take: int | None = None) -> list[dict]:
         entries = [e for e in self._entries if e["tenant_id"] == where["tenant_id"]]
+        # Filter by reason if specified
+        if "reason" in where:
+            entries = [e for e in entries if e["reason"] == where["reason"]]
         entries = list(reversed(entries))
         if take:
             entries = entries[:take]
         return entries
+
+    async def find_first(self, where: dict) -> dict | None:
+        for entry in self._entries:
+            if entry["tenant_id"] == where.get("tenant_id") and entry["reason"] == where.get("reason"):
+                return entry
+        return None
+
+
+class FakeUserEventModel:
+    def __init__(self) -> None:
+        self._events: list[dict] = []
+
+    async def create(self, data: dict) -> dict:
+        event = {
+            "id": str(uuid.uuid4()),
+            "user_id": data["user_id"],
+            "type": data["type"],
+            "metadata_json": data.get("metadata_json"),
+            "created_at": datetime.utcnow(),
+        }
+        self._events.append(event)
+        return event
+
+
+class FakeCaseModel:
+    def __init__(self) -> None:
+        self._cases: list[dict] = []
+
+    def add(self, tenant_id: str, title: str = "Test Case") -> dict:
+        case = {
+            "id": str(uuid.uuid4()),
+            "tenant_id": tenant_id,
+            "title": title,
+            "status": "DRAFT",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+        self._cases.append(case)
+        return case
+
+    async def find_first(self, where: dict) -> dict | None:
+        for case in self._cases:
+            if case["id"] == where.get("id") and case["tenant_id"] == where.get("tenant_id"):
+                return case
+        return None
 
 
 class FakePrisma:
@@ -212,6 +278,8 @@ class FakePrisma:
         self.plan = FakePlanModel()
         self.tenantcreditbalance = FakeTenantCreditBalanceModel()
         self.creditledgerentry = FakeCreditLedgerEntryModel()
+        self.userevent = FakeUserEventModel()
+        self.case = FakeCaseModel()
 
 
 @dataclass
@@ -362,4 +430,225 @@ def test_admin_set_plan_updates_tenant(billing_context: BillingTestContext) -> N
     # Verify tenant has plan_id
     tenant = billing_context.prisma.tenant._by_id[tenant_id]
     assert tenant["plan_id"] == plan_id
+
+
+# --- Credit Purchase Tests ---
+
+
+def test_purchase_credits_increases_balance(billing_context: BillingTestContext) -> None:
+    """POST /billing/credits/purchase increases balance and creates ledger entry."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "buyer@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Purchase 5 credits
+    response = billing_context.client.post(
+        "/billing/credits/purchase", json={"amount": 5}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["balance"] == 5
+    assert body["data"]["purchased"] == 5
+    assert body["data"]["price_cents"] == 5 * 149  # 1.49 EUR per credit
+    assert body["data"]["currency"] == "EUR"
+
+    # Verify balance in /billing/me
+    response = billing_context.client.get("/billing/me")
+    assert response.status_code == 200
+    assert response.json()["data"]["credits"]["balance"] == 5
+
+
+def test_purchase_credits_accumulates(billing_context: BillingTestContext) -> None:
+    """Multiple purchases accumulate balance."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "multi@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Purchase twice
+    response = billing_context.client.post(
+        "/billing/credits/purchase", json={"amount": 3}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["balance"] == 3
+
+    response = billing_context.client.post(
+        "/billing/credits/purchase", json={"amount": 2}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["balance"] == 5
+
+
+def test_purchase_credits_validates_amount(billing_context: BillingTestContext) -> None:
+    """POST /billing/credits/purchase validates amount."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "validate@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Try to purchase 0 credits
+    response = billing_context.client.post(
+        "/billing/credits/purchase", json={"amount": 0}
+    )
+    assert response.status_code == 422  # Validation error
+
+    # Try to purchase negative credits
+    response = billing_context.client.post(
+        "/billing/credits/purchase", json={"amount": -1}
+    )
+    assert response.status_code == 422
+
+    # Try to purchase too many credits
+    response = billing_context.client.post(
+        "/billing/credits/purchase", json={"amount": 101}
+    )
+    assert response.status_code == 422
+
+
+# --- Credit Spend Tests ---
+
+
+def test_spend_credits_deducts_balance(billing_context: BillingTestContext) -> None:
+    """POST /billing/credits/spend deducts credits for a case."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "spender@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Get tenant ID
+    response = billing_context.client.get("/billing/me")
+    tenant_id = response.json()["data"]["tenant"]["id"]
+
+    # Grant credits first
+    billing_context.prisma.tenantcreditbalance._by_tenant_id[tenant_id] = {
+        "tenant_id": tenant_id,
+        "balance": 10,
+        "updated_at": datetime.utcnow(),
+    }
+
+    # Create a case
+    case = billing_context.prisma.case.add(tenant_id=tenant_id, title="Test Case")
+
+    # Spend credits for the case
+    response = billing_context.client.post(
+        "/billing/credits/spend", json={"case_id": case["id"]}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["balance"] == 9  # 10 - 1
+    assert body["data"]["spent"] == 1
+    assert body["data"]["case_id"] == case["id"]
+
+
+def test_spend_credits_fails_with_insufficient_balance(billing_context: BillingTestContext) -> None:
+    """POST /billing/credits/spend fails when balance is insufficient."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "broke@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Get tenant ID
+    response = billing_context.client.get("/billing/me")
+    tenant_id = response.json()["data"]["tenant"]["id"]
+
+    # Create a case (no credits granted)
+    case = billing_context.prisma.case.add(tenant_id=tenant_id, title="Test Case")
+
+    # Try to spend credits
+    response = billing_context.client.post(
+        "/billing/credits/spend", json={"case_id": case["id"]}
+    )
+    assert response.status_code == 402  # Payment Required
+    body = response.json()
+    assert body["error"]["code"] == "INSUFFICIENT_CREDITS"
+
+
+def test_spend_credits_idempotent(billing_context: BillingTestContext) -> None:
+    """POST /billing/credits/spend is idempotent - same case doesn't deduct twice."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "idem@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Get tenant ID
+    response = billing_context.client.get("/billing/me")
+    tenant_id = response.json()["data"]["tenant"]["id"]
+
+    # Grant credits
+    billing_context.prisma.tenantcreditbalance._by_tenant_id[tenant_id] = {
+        "tenant_id": tenant_id,
+        "balance": 10,
+        "updated_at": datetime.utcnow(),
+    }
+
+    # Create a case
+    case = billing_context.prisma.case.add(tenant_id=tenant_id, title="Test Case")
+
+    # Spend credits first time
+    response = billing_context.client.post(
+        "/billing/credits/spend", json={"case_id": case["id"]}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["spent"] == 1
+    assert response.json()["data"]["balance"] == 9
+
+    # Spend credits second time - should be idempotent
+    response = billing_context.client.post(
+        "/billing/credits/spend", json={"case_id": case["id"]}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["spent"] == 0  # Not spent again
+    assert response.json()["data"]["balance"] == 9  # Balance unchanged
+
+
+def test_spend_credits_fails_for_nonexistent_case(billing_context: BillingTestContext) -> None:
+    """POST /billing/credits/spend fails for non-existent case."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "nocase@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Try to spend credits for non-existent case
+    response = billing_context.client.post(
+        "/billing/credits/spend", json={"case_id": str(uuid.uuid4())}
+    )
+    assert response.status_code == 404
+    body = response.json()
+    assert body["error"]["code"] == "NOT_FOUND"
+
+
+# --- Pricing Info Tests ---
+
+
+def test_pricing_returns_tiers(billing_context: BillingTestContext) -> None:
+    """GET /billing/pricing returns pricing tiers."""
+    # Register user
+    response = billing_context.client.post(
+        "/auth/register", json={"email": "price@test.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Get pricing info
+    response = billing_context.client.get("/billing/pricing")
+    assert response.status_code == 200
+    body = response.json()
+
+    # Check structure
+    assert "tiers" in body["data"]
+    assert "credit_unit_price_cents" in body["data"]
+    assert "currency" in body["data"]
+
+    # Check tiers
+    tiers = body["data"]["tiers"]
+    assert len(tiers) >= 1
+    assert tiers[0]["credits"] == 1
+    assert tiers[0]["price_cents"] == 149  # 1.49 EUR
 

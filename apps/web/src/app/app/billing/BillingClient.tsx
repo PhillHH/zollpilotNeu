@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Section } from "../../design-system/primitives/Section";
 import { Card } from "../../design-system/primitives/Card";
 import { Button } from "../../design-system/primitives/Button";
 import { Alert } from "../../design-system/primitives/Alert";
-import { billing, BillingMe, CreditHistoryEntry } from "../../lib/api/client";
+import { billing, BillingMe, CreditHistoryEntry, PricingTier, ApiError } from "../../lib/api/client";
 
 type LoadingState = "loading" | "loaded" | "error";
+type PurchaseState = "idle" | "purchasing" | "success" | "error";
 
 /**
  * Formatiert den Reason-Code in lesbare deutsche Beschreibung
@@ -16,11 +17,22 @@ function formatReason(reason: string): string {
   const reasonMap: Record<string, string> = {
     ADMIN_GRANT: "Gutschrift",
     PDF_EXPORT: "Ausfüllhilfe exportiert",
+    AUSFUELLHILFE: "Ausfüllhilfe verwendet",
     INITIAL_GRANT: "Startguthaben",
     PURCHASE: "Kauf",
     REFUND: "Rückerstattung",
   };
   return reasonMap[reason] ?? reason;
+}
+
+/**
+ * Formatiert Cent-Beträge in Euro-Währung
+ */
+function formatPrice(cents: number): string {
+  return (cents / 100).toLocaleString("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  });
 }
 
 /**
@@ -45,28 +57,68 @@ function formatDate(dateString: string): string {
 export function BillingClient() {
   const [billingInfo, setBillingInfo] = useState<BillingMe | null>(null);
   const [history, setHistory] = useState<CreditHistoryEntry[]>([]);
+  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
   const [loadState, setLoadState] = useState<LoadingState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [showPriceInfo, setShowPriceInfo] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [selectedTier, setSelectedTier] = useState<PricingTier | null>(null);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [billingRes, historyRes, pricingRes] = await Promise.all([
+        billing.me(),
+        billing.history(20),
+        billing.pricing(),
+      ]);
+      setBillingInfo(billingRes.data);
+      setHistory(historyRes.data);
+      setPricingTiers(pricingRes.data.tiers);
+      setLoadState("loaded");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Fehler beim Laden der Daten"
+      );
+      setLoadState("error");
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [billingRes, historyRes] = await Promise.all([
-          billing.me(),
-          billing.history(20),
-        ]);
-        setBillingInfo(billingRes.data);
-        setHistory(historyRes.data);
-        setLoadState("loaded");
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Fehler beim Laden der Daten"
-        );
-        setLoadState("error");
-      }
-    }
     loadData();
+  }, [loadData]);
+
+  const handlePurchase = useCallback(async (tier: PricingTier) => {
+    setPurchaseState("purchasing");
+    setPurchaseError(null);
+    setSelectedTier(tier);
+
+    try {
+      const result = await billing.purchaseCredits(tier.credits);
+      // Update billing info with new balance
+      if (billingInfo) {
+        setBillingInfo({
+          ...billingInfo,
+          credits: { balance: result.data.balance },
+        });
+      }
+      setPurchaseState("success");
+      // Reload history after purchase
+      const historyRes = await billing.history(20);
+      setHistory(historyRes.data);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setPurchaseError(apiErr.message || "Kauf fehlgeschlagen");
+      setPurchaseState("error");
+    }
+  }, [billingInfo]);
+
+  const closePurchaseModal = useCallback(() => {
+    setShowPurchaseModal(false);
+    setPurchaseState("idle");
+    setPurchaseError(null);
+    setSelectedTier(null);
   }, []);
 
   if (loadState === "loading") {
@@ -118,7 +170,7 @@ export function BillingClient() {
               <div className="balance-actions">
                 <Button
                   variant="primary"
-                  onClick={() => alert("Credits kaufen wird bald verfügbar sein.")}
+                  onClick={() => setShowPurchaseModal(true)}
                 >
                   Credits kaufen
                 </Button>
@@ -524,7 +576,195 @@ export function BillingClient() {
             text-align: left;
           }
         }
+
+        /* Purchase Modal */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: var(--space-lg);
+        }
+
+        .modal-content {
+          background: var(--color-background);
+          border-radius: var(--radius-lg);
+          max-width: 500px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: var(--space-lg);
+          border-bottom: 1px solid var(--color-border-light);
+        }
+
+        .modal-header h2 {
+          margin: 0;
+          font-size: var(--text-lg);
+          font-weight: var(--font-semibold);
+        }
+
+        .modal-close {
+          background: none;
+          border: none;
+          font-size: var(--text-xl);
+          cursor: pointer;
+          color: var(--color-text-muted);
+          padding: var(--space-xs);
+        }
+
+        .modal-close:hover {
+          color: var(--color-text);
+        }
+
+        .modal-body {
+          padding: var(--space-lg);
+        }
+
+        .tier-list {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-md);
+        }
+
+        .tier-card {
+          border: 2px solid var(--color-border);
+          border-radius: var(--radius-md);
+          padding: var(--space-md);
+          cursor: pointer;
+          transition: border-color 0.2s, background 0.2s;
+        }
+
+        .tier-card:hover {
+          border-color: var(--color-primary);
+          background: var(--color-primary-softer);
+        }
+
+        .tier-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: var(--space-xs);
+        }
+
+        .tier-name {
+          font-weight: var(--font-semibold);
+          color: var(--color-text);
+        }
+
+        .tier-price {
+          font-weight: var(--font-bold);
+          color: var(--color-primary);
+        }
+
+        .tier-description {
+          font-size: var(--text-sm);
+          color: var(--color-text-muted);
+          margin: 0;
+        }
+
+        .purchase-success {
+          text-align: center;
+          padding: var(--space-lg);
+        }
+
+        .success-icon {
+          font-size: 3rem;
+          margin-bottom: var(--space-md);
+        }
+
+        .success-message {
+          font-size: var(--text-lg);
+          font-weight: var(--font-semibold);
+          color: var(--color-success);
+          margin: 0 0 var(--space-sm) 0;
+        }
+
+        .success-details {
+          color: var(--color-text-muted);
+          margin: 0 0 var(--space-lg) 0;
+        }
       `}</style>
+
+      {/* Purchase Modal */}
+      {showPurchaseModal && (
+        <div className="modal-overlay" onClick={closePurchaseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Credits kaufen</h2>
+              <button className="modal-close" onClick={closePurchaseModal} type="button">
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              {purchaseState === "success" && selectedTier ? (
+                <div className="purchase-success">
+                  <div className="success-icon">✓</div>
+                  <p className="success-message">Kauf erfolgreich!</p>
+                  <p className="success-details">
+                    {selectedTier.credits} Credit{selectedTier.credits > 1 ? "s" : ""} wurden Ihrem Konto gutgeschrieben.
+                  </p>
+                  <Button variant="primary" onClick={closePurchaseModal}>
+                    Schließen
+                  </Button>
+                </div>
+              ) : purchaseState === "error" ? (
+                <>
+                  <Alert variant="error">{purchaseError}</Alert>
+                  <div style={{ marginTop: "var(--space-md)" }}>
+                    <Button variant="secondary" onClick={() => setPurchaseState("idle")}>
+                      Erneut versuchen
+                    </Button>
+                  </div>
+                </>
+              ) : purchaseState === "purchasing" ? (
+                <div style={{ textAlign: "center", padding: "var(--space-xl)" }}>
+                  <p>Verarbeite Kauf...</p>
+                </div>
+              ) : (
+                <>
+                  <p style={{ marginBottom: "var(--space-lg)", color: "var(--color-text-muted)" }}>
+                    Wählen Sie ein Paket:
+                  </p>
+                  <div className="tier-list">
+                    {pricingTiers.map((tier) => (
+                      <div
+                        key={tier.name}
+                        className="tier-card"
+                        onClick={() => handlePurchase(tier)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === "Enter" && handlePurchase(tier)}
+                      >
+                        <div className="tier-header">
+                          <span className="tier-name">{tier.name}</span>
+                          <span className="tier-price">{formatPrice(tier.price_cents)}</span>
+                        </div>
+                        <p className="tier-description">{tier.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ marginTop: "var(--space-lg)", fontSize: "var(--text-sm)", color: "var(--color-text-light)" }}>
+                    Hinweis: Dies ist eine Demo. In der Produktionsversion würde hier die Zahlung über einen Zahlungsanbieter erfolgen.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Section>
   );
 }
