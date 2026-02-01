@@ -1,64 +1,136 @@
-import Link from "next/link";
-import { Section } from "../design-system/primitives/Section";
-import { Card } from "../design-system/primitives/Card";
-import "./admin.css";
+"use client";
+
+import React, { useState } from "react";
+import Link from 'next/link';
+import { Users, AlertTriangle, DollarSign, FileText, Settings, ShieldCheck } from 'lucide-react';
+import { OverviewCard, ActivityChart, CaseList } from "../components/Dashboard";
+import { DashboardGrid, SectionHeader, FilterTabs } from "../components/Dashboard/shared";
 
 /**
- * Admin Dashboard – Übersicht der Administrationsfunktionen
+ * Admin Dashboard - System Administration
+ * 
+ * Rebuilt using shared Dashboard components.
+ * Focus: System Health, Monetization, User Management.
  */
 export default function AdminPage() {
+  const [filter, setFilter] = useState("Heute");
+
   return (
-    <Section maxWidth="lg" padding="xl">
+    <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-12">
       {/* Header */}
-      <header className="admin-header">
-        <h1 className="admin-title">Administration</h1>
-        <p className="admin-subtitle">
-          Verwalten Sie Mandanten, Tarife, Guthaben und Inhalte.
-        </p>
-      </header>
+      <SectionHeader
+        title="System Administration"
+        action={
+          <FilterTabs options={['Heute', 'Woche', 'Monat']} active={filter} onChange={setFilter} />
+        }
+      />
 
-      {/* Navigation Cards */}
-      <div className="admin-grid">
-        <Link href="/admin/tenants" className="admin-link">
-          <Card hoverable padding="lg" className="admin-card">
-            <div className="admin-card-icon">🏢</div>
-            <h2 className="admin-card-title">Mandanten</h2>
-            <p className="admin-card-description">
-              Übersicht aller Organisationen mit Tarif- und Guthabenstatus.
-            </p>
-          </Card>
-        </Link>
+      {/* KPI Grid (System Health & Business) */}
+      <DashboardGrid columns={3}>
+        <OverviewCard
+          label="Gesamtumsatz"
+          value="12.4k €"
+          trend="+8% vs Vormonat"
+          trendUp={true}
+          icon={DollarSign}
+          iconBgClass="bg-[#B5E4CA]"
+          iconColorClass="text-[#1A1D1F]"
+          chartColor="#83BF6E"
+        />
+        <OverviewCard
+          label="Aktive Nutzer"
+          value="1,240"
+          trend="+12 Neue"
+          trendUp={true}
+          icon={Users}
+          iconBgClass="bg-[#CABDFF]"
+          iconColorClass="text-[#1A1D1F]"
+          chartColor="#8E59FF"
+        />
+        <OverviewCard
+          label="System Fehler"
+          value="0.05%"
+          trend="-0.02%"
+          trendUp={true} // Trend indicates improvement (lower errors)
+          icon={AlertTriangle}
+          iconBgClass="bg-[#FFBC99]"
+          iconColorClass="text-[#1A1D1F]"
+          chartColor="#FF6A55"
+        />
+      </DashboardGrid>
 
-        <Link href="/admin/plans" className="admin-link">
-          <Card hoverable padding="lg" className="admin-card">
-            <div className="admin-card-icon">📋</div>
-            <h2 className="admin-card-title">Tarife</h2>
-            <p className="admin-card-description">
-              Verwalten Sie Abonnement-Tarife und Preisgestaltung.
-            </p>
-          </Card>
-        </Link>
-
-        <Link href="/admin/content/blog" className="admin-link">
-          <Card hoverable padding="lg" className="admin-card">
-            <div className="admin-card-icon">📝</div>
-            <h2 className="admin-card-title">Blog</h2>
-            <p className="admin-card-description">
-              Verwalten Sie Blog-Artikel und Veröffentlichungen.
-            </p>
-          </Card>
-        </Link>
-
-        <Link href="/admin/content/faq" className="admin-link">
-          <Card hoverable padding="lg" className="admin-card">
-            <div className="admin-card-icon">❓</div>
-            <h2 className="admin-card-title">FAQ</h2>
-            <p className="admin-card-description">
-              Verwalten Sie häufig gestellte Fragen und Antworten.
-            </p>
-          </Card>
-        </Link>
+      {/* Quick Navigation Grid converted to KPI Cards */}
+      <div>
+        <SectionHeader title="Verwaltung" className="mb-4" />
+        <DashboardGrid columns={4}>
+          <Link href="/admin/tenants">
+            <OverviewCard
+              label="Mandanten"
+              value="24"
+              trend="Verwalten"
+              trendUp={true} // Neutral
+              icon={Users}
+              iconBgClass="bg-gray-100"
+              iconColorClass="text-[#1A1D1F]"
+              chartColor="#EFEFEF" // Subtle/Hidden
+              chartPath="M0 20 L 80 20" // Flat line
+            />
+          </Link>
+          <Link href="/admin/plans">
+            <OverviewCard
+              label="Tarife"
+              value="3"
+              trend="Preisgestaltung"
+              trendUp={true}
+              icon={DollarSign}
+              iconBgClass="bg-gray-100"
+              iconColorClass="text-[#1A1D1F]"
+              chartColor="#EFEFEF"
+              chartPath="M0 20 L 80 20"
+            />
+          </Link>
+          <Link href="/admin/content/blog">
+            <OverviewCard
+              label="Content"
+              value="18"
+              trend="Blog & FAQ"
+              trendUp={true}
+              icon={FileText}
+              iconBgClass="bg-gray-100"
+              iconColorClass="text-[#1A1D1F]"
+              chartColor="#EFEFEF"
+              chartPath="M0 20 L 80 20"
+            />
+          </Link>
+          <Link href="/admin/settings">
+            <OverviewCard
+              label="System"
+              value="v2.4"
+              trend="Einstellungen"
+              trendUp={true}
+              icon={Settings}
+              iconBgClass="bg-gray-100"
+              iconColorClass="text-[#1A1D1F]"
+              chartColor="#EFEFEF"
+              chartPath="M0 20 L 80 20"
+            />
+          </Link>
+        </DashboardGrid>
       </div>
-    </Section>
-  );
+
+      {/* System Activity Monitor */}
+      <div>
+        <SectionHeader title="Live Aktivität" className="mb-4" />
+        <DashboardGrid columns={3}>
+          <div className="lg:col-span-2">
+            {/* Displaying Global Case Activity across all tenants */}
+            <CaseList title="System Protokoll" />
+          </div>
+          <div className="lg:col-span-1">
+            <ActivityChart />
+          </div>
+        </DashboardGrid>
+      </div>
+    </div>
+  )
 }
