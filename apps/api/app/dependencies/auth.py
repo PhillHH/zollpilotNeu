@@ -7,6 +7,7 @@ from typing import Callable
 from fastapi import Depends, HTTPException, Request, status
 
 from app.core.rbac import Role, role_at_least
+from app.core.security_events import log_security_event, SecurityEventType
 from app.db.prisma_client import prisma
 
 
@@ -31,7 +32,14 @@ async def get_current_user(request: Request) -> AuthContext:
         401 UNAUTHORIZED: If not authenticated or session invalid
     """
     session = request.state.session
+    request_id = getattr(request.state, "request_id", None)
+
     if not session:
+        log_security_event(
+            event_type=SecurityEventType.AUTH_REQUIRED,
+            details={"endpoint": str(request.url.path), "method": request.method},
+            request_id=request_id,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
@@ -96,25 +104,25 @@ def require_role(min_role: Role) -> Callable:
         context: AuthContext = Depends(get_current_user),
     ) -> AuthContext:
         if not role_at_least(context.role, min_role):
-            # Log the access attempt for debugging
             request_id = getattr(request.state, "request_id", None)
-            logger.warning(
-                "Access denied: insufficient role",
-                extra={
-                    "request_id": request_id,
-                    "user_id": context.user.get("id"),
-                    "user_role": context.role.value,
+            # Log security event for role violation
+            log_security_event(
+                event_type=SecurityEventType.ROLE_VIOLATION,
+                user_id=context.user.get("id"),
+                tenant_id=context.tenant.get("id"),
+                details={
                     "required_role": min_role.value,
+                    "actual_role": context.role.value,
                     "endpoint": str(request.url.path),
+                    "method": request.method,
                 },
+                request_id=request_id,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "code": "FORBIDDEN",
                     "message": "Du bist eingeloggt, hast aber keine Berechtigung für diese Aktion.",
-                    "required_role": min_role.value,
-                    "your_role": context.role.value,
                 },
             )
         return context

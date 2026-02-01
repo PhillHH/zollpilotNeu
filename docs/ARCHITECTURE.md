@@ -619,6 +619,72 @@ processing. This foundation enables future monetization.
 
 Balance updates are atomic: ledger entry + balance update in same operation.
 
+### Security Layer (Sprint 10)
+
+The Security Layer enforces strict tenant isolation and role-based access control across the entire application.
+
+**Non-Negotiables:**
+1. **Tenant isolation is absolute** – No "best effort", no exceptions
+2. **Server decides** – No client-provided tenant_id trusted
+3. **Fail secure** – On error, access is denied (not granted)
+4. **No information leakage** – Cross-tenant access returns 404, not 403
+
+**Core Components:**
+
+```
+apps/api/app/core/
+├── tenant_guard.py      # require_tenant_scope(), build_tenant_where()
+├── role_guard.py        # require_admin(), require_tenant_admin()
+├── security_events.py   # log_security_event(), SecurityEventType
+└── rbac.py              # Role enum, role_at_least()
+```
+
+**Tenant Guards:**
+
+```python
+from app.core.tenant_guard import require_tenant_scope, build_tenant_where
+
+# 1. Always include tenant_id in WHERE
+case = await prisma.case.find_first(
+    where=build_tenant_where(context.tenant["id"], id=case_id)
+)
+
+# 2. Verify result (defense in depth)
+verified = require_tenant_scope(
+    resource=case,
+    resource_type="Case",
+    resource_id=case_id,
+    current_tenant_id=context.tenant["id"],
+    user_id=context.user["id"],
+)
+```
+
+**Security Event Logging:**
+
+All access violations are logged for audit:
+
+| Event | Severity | Description |
+|-------|----------|-------------|
+| `tenant_scope_violation` | WARNING | Cross-tenant access attempt |
+| `role_violation` | WARNING | Unauthorized role access |
+| `auth_required` | INFO | Unauthenticated request |
+| `admin_access` | INFO | Admin endpoint accessed |
+
+**Frontend Route Protection:**
+
+```typescript
+// Server-side auth checks (redirects, not errors)
+export default async function AdminLayout({ children }) {
+  const session = await fetchSession();
+  requireSession(session);  // → /login
+  requireAdmin(session);    // → /app
+
+  return <AdminShell>{children}</AdminShell>;
+}
+```
+
+See `docs/SECURITY/TENANT_ISOLATION.md` for detailed documentation.
+
 ### Case Lifecycle & Versioning
 
 The Case Lifecycle defines a clear state machine for case progression with immutable snapshots for compliance and auditability.
