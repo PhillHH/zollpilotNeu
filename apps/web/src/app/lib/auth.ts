@@ -31,22 +31,29 @@ type AuthMeResponse = {
  */
 export async function fetchSession(): Promise<AuthMeData | null> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(
-    process.env.SESSION_COOKIE_NAME ?? "zollpilot_session"
-  );
+  const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "zollpilot_session";
+  const sessionCookie = cookieStore.get(sessionCookieName);
+
+  console.log(`[fetchSession] Looking for cookie '${sessionCookieName}'... Found:`, !!sessionCookie);
+  if (sessionCookie) {
+    console.log(`[fetchSession] Cookie value (preview): ${sessionCookie.value.substring(0, 10)}...`);
+  }
 
   const cookieHeader = sessionCookie
     ? `${sessionCookie.name}=${sessionCookie.value}`
     : "";
 
   try {
+    console.log("[fetchSession] Calling /auth/me API...");
     const response = await apiRequest<AuthMeResponse>("/auth/me", {
       headers: cookieHeader ? { Cookie: cookieHeader } : {},
       cache: "no-store"
     });
+    console.log("[fetchSession] API success:", response.data ? "User data returned" : "No data");
     return response.data;
   } catch (error) {
     const apiError = error as ApiError;
+    console.error("[fetchSession] API failed:", apiError.status, apiError.message);
     if (apiError.status === 401) {
       return null;
     }

@@ -1,11 +1,10 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { PageShell } from "../../design-system/primitives/PageShell";
+import React, { useEffect, useState } from "react";
+import { Sidebar } from "../../components/Sidebar/Sidebar";
+import { SIDEBAR_NAVIGATION, SIDEBAR_BOTTOM_NAVIGATION, NavItem } from "../../../navigation/sidebar.config";
 import { apiRequest } from "../../lib/api/client";
+import { TopBar } from "../../components/TopBar/TopBar";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -13,343 +12,88 @@ type AppShellProps = {
 
 type AuthInfo = {
   canAccessAdmin: boolean;
+  email?: string;
 };
 
 /**
- * AppShell – Layout für den App-Bereich (/app/*)
- *
- * Verwendet das ZollPilot Design System v1.
- * Header mit Navigation, Footer mit Links.
- * Shows admin link only for SYSTEM_ADMIN users.
+ * AppShell – Main Layout with Sidebar and TopBar
+ * 
+ * Replaces the old top-navigation layout with the new Sidebar layout.
+ * Includes dynamic admin link injection based on permissions.
  */
 export function AppShell({ children }: AppShellProps) {
-  const pathname = usePathname();
   const [auth, setAuth] = useState<AuthInfo | null>(null);
 
   useEffect(() => {
     async function loadAuth() {
       try {
-        const data = await apiRequest<{ data: { permissions?: { can_access_admin?: boolean } } }>(
+        const data = await apiRequest<{ data: { email: string; permissions?: { can_access_admin?: boolean } } }>(
           "/auth/me"
         );
         setAuth({
           canAccessAdmin: data.data?.permissions?.can_access_admin ?? false,
+          email: data.data?.email,
         });
       } catch {
-        // Ignore errors - admin link just won't show
+        // Ignore errors
       }
     }
     loadAuth();
   }, []);
 
-  const isActive = (path: string) => {
-    if (path === "/app") return pathname === "/app";
-    if (path === "/app/profile") return pathname === "/app/profile";
-    return pathname.startsWith(path);
-  };
+  // Prepare Navigation Items
+  const navItems = [...SIDEBAR_NAVIGATION];
 
-  return (
-    <PageShell
-      header={
-        <AppHeader
-          isActive={isActive}
-          canAccessAdmin={auth?.canAccessAdmin ?? false}
-        />
-      }
-      footer={<AppFooter />}
-    >
-      {children}
-    </PageShell>
-  );
-}
-
-/** App Header mit Navigation */
-function AppHeader({
-  isActive,
-  canAccessAdmin,
-}: {
-  isActive: (path: string) => boolean;
-  canAccessAdmin: boolean;
-}) {
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
+  // Dynamic Admin Link
+  if (auth?.canAccessAdmin) {
+    // Add Admin link if not already present
+    // We insert it before 'settings' or at the end
+    const hasAdmin = navItems.some(i => i.id === 'admin');
+    if (!hasAdmin) {
+      navItems.push({
+        id: 'admin',
+        label: 'Admin Backend',
+        iconKey: 'settings', // Or shield/lock if available
+        href: '/admin'
+      });
+    }
   }
 
+  // Add Profile to Bottom Nav if needed, or rely on Settings
+  const bottomNavItems = [...SIDEBAR_BOTTOM_NAVIGATION];
+  // Example: Add Profile link
+  bottomNavItems.push({
+    id: 'profile',
+    label: 'Profil',
+    iconKey: 'users', // using 'users' as profile icon proxy
+    href: '/app/profile'
+  });
+
   return (
-    <header className="app-header">
-      <div className="header-container">
-        {/* Logo */}
-        <Link href="/app" className="header-logo">
-          <span className="logo-icon">📦</span>
-          <span className="logo-text">ZollPilot</span>
-        </Link>
+    <div className="app-shell flex h-screen w-full bg-[#F4F4F4]">
+      {/* Sidebar - Fixed width handled internally */}
+      <Sidebar
+        navItems={navItems}
+        bottomNavItems={bottomNavItems}
+        className="flex-shrink-0 z-50"
+      />
 
-        {/* Main Navigation */}
-        <nav className="header-nav">
-          <Link
-            href="/app"
-            className={`nav-link ${isActive("/app") && !isActive("/app/cases") && !isActive("/app/billing") ? "nav-link--active" : ""}`}
-          >
-            Übersicht
-          </Link>
-          <Link
-            href="/app/cases"
-            className={`nav-link ${isActive("/app/cases") ? "nav-link--active" : ""}`}
-          >
-            Fälle
-          </Link>
-          <Link
-            href="/app/billing"
-            className={`nav-link ${isActive("/app/billing") ? "nav-link--active" : ""}`}
-          >
-            Kosten & Credits
-          </Link>
-        </nav>
+      {/* Main Content Area Wrapper */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <TopBar />
 
-        {/* User Actions */}
-        <div className="header-actions">
-          <Link
-            href="/app/profile"
-            className={`profile-link ${isActive("/app/profile") ? "profile-link--active" : ""}`}
-          >
-            Profil
-          </Link>
-          {canAccessAdmin && (
-            <Link href="/admin" className="admin-link">
-              Admin
-            </Link>
-          )}
-          <button onClick={handleLogout} className="logout-link">
-            Abmelden
-          </button>
-        </div>
+        <main className="flex-1 overflow-auto relative flex flex-col">
+          {/* Content Container - max-width constraint for readability */}
+          <div className="w-full max-w-[1200px] mx-auto p-6 md:p-8 lg:p-12 min-h-full">
+            {children}
+
+            {/* Simple Footer inside content area */}
+            <footer className="mt-auto pt-12 pb-6 text-center text-xs text-gray-400">
+              <p>© {new Date().getFullYear()} ZollPilot - Keine Rechtsberatung</p>
+            </footer>
+          </div>
+        </main>
       </div>
-
-      <style jsx>{`
-        .app-header {
-          padding: var(--space-md) var(--space-lg);
-          background: var(--color-surface);
-          border-bottom: 1px solid var(--color-border);
-        }
-
-        .header-container {
-          max-width: var(--max-width-xl);
-          margin: 0 auto;
-          display: flex;
-          align-items: center;
-          gap: var(--space-xl);
-        }
-
-        .app-header :global(.header-logo) {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-          text-decoration: none;
-          color: var(--color-text);
-        }
-
-        .logo-icon {
-          font-size: 1.25rem;
-        }
-
-        .logo-text {
-          font-size: var(--text-lg);
-          font-weight: var(--font-bold);
-          color: var(--color-primary);
-        }
-
-        .header-nav {
-          display: flex;
-          align-items: center;
-          gap: var(--space-xs);
-          flex: 1;
-        }
-
-        .app-header :global(.nav-link) {
-          padding: var(--space-sm) var(--space-md);
-          font-size: var(--text-sm);
-          font-weight: var(--font-medium);
-          color: var(--color-text-muted);
-          text-decoration: none;
-          border-radius: var(--radius-md);
-          transition:
-            color var(--transition-fast),
-            background var(--transition-fast);
-        }
-
-        .app-header :global(.nav-link):hover {
-          color: var(--color-text);
-          background: var(--color-border-light);
-        }
-
-        .app-header :global(.nav-link--active) {
-          color: var(--color-primary);
-          background: var(--color-primary-softer);
-        }
-
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: var(--space-md);
-        }
-
-        .app-header :global(.profile-link) {
-          font-size: var(--text-sm);
-          font-weight: var(--font-medium);
-          color: var(--color-text-muted);
-          text-decoration: none;
-          padding: var(--space-xs) var(--space-sm);
-          border-radius: var(--radius-md);
-          transition:
-            color var(--transition-fast),
-            background var(--transition-fast);
-        }
-
-        .app-header :global(.profile-link):hover {
-          color: var(--color-text);
-          background: var(--color-border-light);
-        }
-
-        .app-header :global(.profile-link--active) {
-          color: var(--color-primary);
-          background: var(--color-primary-softer);
-        }
-
-        .app-header :global(.admin-link) {
-          font-size: var(--text-sm);
-          font-weight: var(--font-medium);
-          color: var(--color-primary);
-          text-decoration: none;
-          padding: var(--space-xs) var(--space-sm);
-          border: 1px solid var(--color-primary);
-          border-radius: var(--radius-md);
-          transition:
-            color var(--transition-fast),
-            background var(--transition-fast);
-        }
-
-        .app-header :global(.admin-link):hover {
-          color: var(--color-text-on-primary);
-          background: var(--color-primary);
-        }
-
-        .app-header :global(.logout-link) {
-          background: none;
-          border: none;
-          padding: 0;
-          cursor: pointer;
-          font-family: inherit;
-          font-size: var(--text-sm);
-          color: var(--color-text-muted);
-          text-decoration: none;
-          transition: color var(--transition-fast);
-        }
-
-        .app-header :global(.logout-link):hover {
-          color: var(--color-danger);
-        }
-
-        @media (max-width: 768px) {
-          .header-nav {
-            gap: 0;
-          }
-
-          .app-header :global(.nav-link) {
-            padding: var(--space-xs) var(--space-sm);
-            font-size: var(--text-xs);
-          }
-
-          .logo-text {
-            display: none;
-          }
-        }
-      `}</style>
-    </header>
-  );
-}
-
-/** App Footer */
-function AppFooter() {
-  return (
-    <footer className="app-footer">
-      <div className="footer-container">
-        <div className="footer-content">
-          <p className="footer-disclaimer">
-            ZollPilot übermittelt keine Daten an Zollbehörden und führt keine
-            Zollanmeldungen durch.
-          </p>
-          <p className="footer-copyright">
-            © {new Date().getFullYear()} ZollPilot
-          </p>
-        </div>
-        <nav className="footer-links">
-          <Link href="/impressum">Impressum</Link>
-          <Link href="/datenschutz">Datenschutz</Link>
-          <Link href="/faq">Hilfe</Link>
-        </nav>
-      </div>
-
-      <style jsx>{`
-        .app-footer {
-          padding: var(--space-md) var(--space-lg);
-          background: var(--color-surface);
-          border-top: 1px solid var(--color-border);
-        }
-
-        .footer-container {
-          max-width: var(--max-width-xl);
-          margin: 0 auto;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .footer-content {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .footer-disclaimer {
-          font-size: var(--text-xs);
-          color: var(--color-text-light);
-          margin: 0;
-        }
-
-        .footer-copyright {
-          font-size: var(--text-sm);
-          color: var(--color-text-light);
-          margin: 0;
-        }
-
-        .footer-links {
-          display: flex;
-          gap: var(--space-lg);
-        }
-
-        .app-footer :global(a) {
-          font-size: var(--text-sm);
-          color: var(--color-text-muted);
-          text-decoration: none;
-          transition: color var(--transition-fast);
-        }
-
-        .app-footer :global(a):hover {
-          color: var(--color-primary);
-        }
-
-        @media (max-width: 640px) {
-          .footer-container {
-            flex-direction: column;
-            gap: var(--space-sm);
-          }
-
-          .footer-links {
-            gap: var(--space-md);
-          }
-        }
-      `}</style>
-    </footer>
+    </div>
   );
 }

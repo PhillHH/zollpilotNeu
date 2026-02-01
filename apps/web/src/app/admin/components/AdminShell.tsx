@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { PageShell } from "../../design-system/primitives/PageShell";
+import React from "react";
+import { Sidebar } from "../../components/Sidebar/Sidebar";
+import { ADMIN_SIDEBAR_NAVIGATION, ADMIN_BOTTOM_NAVIGATION } from "../../../navigation/admin-sidebar.config";
+import { TopBar } from "../../components/TopBar/TopBar";
 
 type AdminShellProps = {
   children: React.ReactNode;
@@ -11,213 +12,34 @@ type AdminShellProps = {
 /**
  * AdminShell – Layout für den Admin-Bereich (/admin/*)
  * 
- * Ruhiger, seriöser Stil für Administratoren.
- * Verwendet das ZollPilot Design System v1.
+ * Uses the same Sidebar layout as AppShell but with Admin Navigation.
  */
 export function AdminShell({ children }: AdminShellProps) {
-  const pathname = usePathname();
-
-  const isActive = (path: string) => {
-    if (path === "/admin") return pathname === "/admin";
-    return pathname.startsWith(path);
-  };
 
   return (
-    <PageShell
-      header={<AdminHeader isActive={isActive} />}
-      footer={<AdminFooter />}
-    >
-      {children}
-    </PageShell>
-  );
-}
+    <div className="admin-shell flex h-screen w-full bg-[#EAECF0]"> {/* Slightly different bg for admin? */}
+      <Sidebar
+        navItems={ADMIN_SIDEBAR_NAVIGATION}
+        bottomNavItems={ADMIN_BOTTOM_NAVIGATION}
+        className="flex-shrink-0 z-50 border-r-red-100" // Maybe a slight hint it's admin? Keep standard for now.
+      />
 
-/** Admin Header mit Navigation */
-function AdminHeader({ isActive }: { isActive: (path: string) => boolean }) {
-  return (
-    <header className="admin-header">
-      <div className="header-container">
-        {/* Logo & Titel */}
-        <div className="header-brand">
-          <Link href="/admin" className="header-logo">
-            <span className="logo-icon">⚙️</span>
-            <span className="logo-text">Administration</span>
-          </Link>
-        </div>
+      {/* Main Content Area Wrapper */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <TopBar />
 
-        {/* Navigation */}
-        <nav className="header-nav">
-          <Link
-            href="/admin"
-            className={`nav-link ${isActive("/admin") && !isActive("/admin/tenants") && !isActive("/admin/users") && !isActive("/admin/plans") && !isActive("/admin/events") ? "nav-link--active" : ""}`}
-          >
-            Übersicht
-          </Link>
-          <Link
-            href="/admin/users"
-            className={`nav-link ${isActive("/admin/users") ? "nav-link--active" : ""}`}
-          >
-            Nutzer
-          </Link>
-          <Link
-            href="/admin/tenants"
-            className={`nav-link ${isActive("/admin/tenants") ? "nav-link--active" : ""}`}
-          >
-            Mandanten
-          </Link>
-          <Link
-            href="/admin/plans"
-            className={`nav-link ${isActive("/admin/plans") ? "nav-link--active" : ""}`}
-          >
-            Tarife
-          </Link>
-          <Link
-            href="/admin/events"
-            className={`nav-link ${isActive("/admin/events") ? "nav-link--active" : ""}`}
-          >
-            Historie
-          </Link>
-        </nav>
+        <main className="flex-1 overflow-auto relative flex flex-col">
+          {/* Admin Header / Breadcrumbs could go here */}
+          <div className="w-full bg-white border-b border-gray-200 px-8 py-4 mb-6 sticky top-0 z-40 flex items-center justify-between">
+            <h1 className="text-xl font-bold text-gray-800">Admin Bereich</h1>
+            <span className="text-sm text-gray-500">System Administration</span>
+          </div>
 
-        {/* Zurück zur App */}
-        <div className="header-actions">
-          <Link href="/app" className="back-to-app">
-            ← Zur App
-          </Link>
-        </div>
+          <div className="w-full max-w-[1400px] mx-auto p-6 md:p-8 min-h-full">
+            {children}
+          </div>
+        </main>
       </div>
-
-      <style jsx>{`
-        .admin-header {
-          padding: var(--space-md) var(--space-lg);
-          background: var(--color-surface);
-          border-bottom: 1px solid var(--color-border);
-        }
-
-        .header-container {
-          max-width: var(--max-width-xl);
-          margin: 0 auto;
-          display: flex;
-          align-items: center;
-          gap: var(--space-xl);
-        }
-
-        .header-brand {
-          display: flex;
-          align-items: center;
-        }
-
-        .admin-header :global(.header-logo) {
-          display: flex;
-          align-items: center;
-          gap: var(--space-sm);
-          text-decoration: none;
-          color: var(--color-text);
-        }
-
-        .logo-icon {
-          font-size: 1.25rem;
-        }
-
-        .logo-text {
-          font-size: var(--text-lg);
-          font-weight: var(--font-bold);
-          color: var(--color-text);
-        }
-
-        .header-nav {
-          display: flex;
-          align-items: center;
-          gap: var(--space-xs);
-          flex: 1;
-        }
-
-        .admin-header :global(.nav-link) {
-          padding: var(--space-sm) var(--space-md);
-          font-size: var(--text-sm);
-          font-weight: var(--font-medium);
-          color: var(--color-text-muted);
-          text-decoration: none;
-          border-radius: var(--radius-md);
-          transition: color var(--transition-fast),
-                      background var(--transition-fast);
-        }
-
-        .admin-header :global(.nav-link):hover {
-          color: var(--color-text);
-          background: var(--color-border-light);
-        }
-
-        .admin-header :global(.nav-link--active) {
-          color: var(--color-primary);
-          background: var(--color-primary-softer);
-        }
-
-        .header-actions {
-          display: flex;
-          align-items: center;
-        }
-
-        .admin-header :global(.back-to-app) {
-          font-size: var(--text-sm);
-          color: var(--color-text-muted);
-          text-decoration: none;
-          transition: color var(--transition-fast);
-        }
-
-        .admin-header :global(.back-to-app):hover {
-          color: var(--color-primary);
-        }
-
-        @media (max-width: 768px) {
-          .header-nav {
-            gap: 0;
-          }
-
-          .admin-header :global(.nav-link) {
-            padding: var(--space-xs) var(--space-sm);
-            font-size: var(--text-xs);
-          }
-
-          .logo-text {
-            font-size: var(--text-base);
-          }
-        }
-      `}</style>
-    </header>
+    </div>
   );
 }
-
-/** Admin Footer */
-function AdminFooter() {
-  return (
-    <footer className="admin-footer">
-      <div className="footer-container">
-        <p className="footer-text">
-          ZollPilot Administration • Nur für autorisierte Benutzer
-        </p>
-      </div>
-
-      <style jsx>{`
-        .admin-footer {
-          padding: var(--space-md) var(--space-lg);
-          background: var(--color-surface);
-          border-top: 1px solid var(--color-border);
-        }
-
-        .footer-container {
-          max-width: var(--max-width-xl);
-          margin: 0 auto;
-          text-align: center;
-        }
-
-        .footer-text {
-          font-size: var(--text-sm);
-          color: var(--color-text-light);
-          margin: 0;
-        }
-      `}</style>
-    </footer>
-  );
-}
-

@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,14 +34,14 @@ services:
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-zollpilot_session}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-localhost}
-      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:1887}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -54,15 +54,15 @@ services:
     restart: unless-stopped
     environment:
       API_BASE_URL: ${API_BASE_URL:-http://api:8000}
-      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:1887}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-zollpilot_session}
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_PORT:-1887}:3000"
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -70,4 +70,5 @@ services:
 
 volumes:
   postgres_data:
+
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { apiRequest, type ApiError } from "../lib/api/client";
 
@@ -12,8 +12,14 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    console.log("[AuthForm] Component mounted, mode:", mode);
+  }, [mode]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    console.log("[AuthForm] handleSubmit called!");
     event.preventDefault();
+    console.log("[AuthForm] preventDefault called");
     setError(null);
     setLoading(true);
 
@@ -23,21 +29,26 @@ export function AuthForm({ mode }: AuthFormProps) {
       password: String(formData.get("password") ?? ""),
     };
 
+    console.log(`[AuthForm] Starting ${mode} request...`, payload);
+
     // Demo: Add admin flag for register
     if (mode === "register") {
       payload.demo_admin = formData.get("demo_admin") === "on";
     }
 
     try {
-      await apiRequest(`/auth/${mode}`, {
+      console.log(`[AuthForm] Sending request to /auth/${mode}`);
+      const response = await apiRequest(`/auth/${mode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
       });
 
+      console.log(`[AuthForm] ${mode} successful:`, response);
       window.location.href = "/app";
     } catch (err) {
+      console.error(`[AuthForm] ${mode} failed:`, err);
       const apiErr = err as ApiError;
       if (apiErr.code === "EMAIL_IN_USE") {
         setError("Diese E-Mail ist bereits registriert.");
@@ -67,7 +78,11 @@ export function AuthForm({ mode }: AuthFormProps) {
           Als Admin registrieren (Demo)
         </label>
       )}
-      <button type="submit" disabled={loading}>
+      <button
+        type="submit"
+        disabled={loading}
+        onClick={() => console.log("[AuthForm] Button clicked!")}
+      >
         {loading ? "..." : mode === "login" ? "Anmelden" : "Registrieren"}
       </button>
       {error && <p className="error-message">{error}</p>}

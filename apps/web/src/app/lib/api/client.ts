@@ -35,27 +35,39 @@ export async function apiRequest<T>(
 ): Promise<T> {
   // Always use apiFetch - in browser it goes through /api/backend proxy
   // which properly handles Set-Cookie headers
+  const baseUrl = getBaseUrl();
+  const fullUrl = `${baseUrl}${path}`;
+
+  console.log(`[apiRequest] ${init.method || 'GET'} ${fullUrl}`);
+
   const response = await apiFetch(path, init);
 
   const requestId = response.headers.get("X-Request-Id");
+
+  console.log(`[apiRequest] Response status: ${response.status} ${response.statusText}`);
 
   if (!response.ok) {
     let payload: unknown = null;
     try {
       payload = await response.json();
-    } catch {
+    } catch (e) {
+      console.error(`[apiRequest] Failed to parse error response:`, e);
       payload = null;
     }
 
     const errorPayload = payload as { error?: { code?: string; message?: string; details?: unknown }; requestId?: string } | null;
     const error = errorPayload?.error ?? {};
-    throw {
+
+    const apiError = {
       code: error.code ?? "UNKNOWN_ERROR",
       message: error.message ?? "Request failed.",
       details: error.details,
       requestId: errorPayload?.requestId ?? requestId,
       status: response.status
     } satisfies ApiError;
+
+    console.error(`[apiRequest] Error:`, apiError);
+    throw apiError;
   }
 
   return (await response.json()) as T;

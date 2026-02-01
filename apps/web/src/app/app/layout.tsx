@@ -16,8 +16,16 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  console.log("[AppLayout] Checking session on server...");
+
   // Server-side auth check
   const session = await fetchSession();
+  console.log("[AppLayout] Session result:", session ? "Session found" : "No session");
+
+  if (!session) {
+    console.log("[AppLayout] No session, redirecting to /login");
+  }
+
   requireSession(session);
 
   return <AppShell>{children}</AppShell>;
