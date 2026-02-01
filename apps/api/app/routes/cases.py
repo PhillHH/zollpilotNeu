@@ -13,6 +13,7 @@ from pydantic import BaseModel, field_validator
 from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
 from app.core.json import normalize_to_json
+from app.core.tenant_guard import require_tenant_scope, build_tenant_where
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -111,16 +112,27 @@ def _validate_field_key(key: str) -> None:
         )
 
 
-async def _get_case_or_404(case_id: str, tenant_id: str) -> dict:
+async def _get_case_or_404(
+    case_id: str, tenant_id: str, user_id: str | None = None
+) -> dict:
+    """
+    Get a case with strict tenant scoping.
+
+    Uses build_tenant_where to ensure tenant_id is always part of the query,
+    then validates result with require_tenant_scope as an extra safety layer.
+    """
     case = await prisma.case.find_first(
-        where={"id": case_id, "tenant_id": tenant_id}
+        where=build_tenant_where(tenant_id, id=case_id)
     )
-    if not case:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "CASE_NOT_FOUND", "message": "Case not found."},
-        )
-    return case.model_dump()
+    # Double-check tenant scope (defense in depth)
+    verified_case = require_tenant_scope(
+        resource=case.model_dump() if case else None,
+        resource_type="Case",
+        resource_id=case_id,
+        current_tenant_id=tenant_id,
+        user_id=user_id,
+    )
+    return verified_case
 
 
 @router.post("", response_model=CaseSummaryResponse, status_code=status.HTTP_201_CREATED)
@@ -163,14 +175,17 @@ async def get_case(
     case_id: str, context: AuthContext = Depends(get_current_user)
 ) -> CaseDetailResponse:
     case = await prisma.case.find_first(
-        where={"id": case_id, "tenant_id": context.tenant["id"]},
+        where=build_tenant_where(context.tenant["id"], id=case_id),
         include={"fields": True, "procedure": True},
     )
-    if not case:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "CASE_NOT_FOUND", "message": "Case not found."},
-        )
+    # Verify tenant scope (defense in depth)
+    require_tenant_scope(
+        resource=case.model_dump() if case else None,
+        resource_type="Case",
+        resource_id=case_id,
+        current_tenant_id=context.tenant["id"],
+        user_id=context.user["id"],
+    )
 
     fields = [
         FieldResponse(key=f.key, value=f.value_json, updated_at=f.updated_at)
@@ -203,7 +218,7 @@ async def patch_case(
     payload: CasePatchRequest,
     context: AuthContext = Depends(get_current_user),
 ) -> CaseSummaryResponse:
-    await _get_case_or_404(case_id, context.tenant["id"])
+    await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
 
     update_data: dict[str, Any] = {}
     if payload.title is not None:
@@ -226,7 +241,7 @@ async def patch_case(
 async def archive_case(
     case_id: str, context: AuthContext = Depends(get_current_user)
 ) -> CaseSummaryResponse:
-    existing = await _get_case_or_404(case_id, context.tenant["id"])
+    existing = await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
 
     # Idempotent: if already archived, just return current state
     if existing["status"] == "ARCHIVED":
@@ -246,7 +261,7 @@ async def archive_case(
 async def get_fields(
     case_id: str, context: AuthContext = Depends(get_current_user)
 ) -> FieldListResponse:
-    await _get_case_or_404(case_id, context.tenant["id"])
+    await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
 
     fields = await prisma.casefield.find_many(where={"case_id": case_id})
     return FieldListResponse(
@@ -275,7 +290,7 @@ async def upsert_field(
             detail={"code": "PAYLOAD_TOO_LARGE", "message": "Field value exceeds maximum size."},
         )
 
-    case = await _get_case_or_404(case_id, context.tenant["id"])
+    case = await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
 
     # Block updates for non-DRAFT cases
     if case["status"] != "DRAFT":

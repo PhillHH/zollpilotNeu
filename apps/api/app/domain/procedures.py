@@ -213,11 +213,17 @@ class ValidationEngine:
     def _validate_business_rules(self, case_fields: dict[str, Any]) -> list[ValidationError]:
         """Validate procedure-specific business rules."""
         errors: list[ValidationError] = []
-        
+
         # IZA-specific rules
         if self.procedure.code == "IZA":
             errors.extend(self._validate_iza_rules(case_fields))
-        
+        # IPK-specific rules
+        elif self.procedure.code == "IPK":
+            errors.extend(self._validate_ipk_rules(case_fields))
+        # IAA-specific rules
+        elif self.procedure.code == "IAA":
+            errors.extend(self._validate_iaa_rules(case_fields))
+
         return errors
 
     def _validate_iza_rules(self, case_fields: dict[str, Any]) -> list[ValidationError]:
@@ -268,6 +274,110 @@ class ValidationEngine:
                 step_key="additional",
                 field_key="remarks",
                 message="Bei gewerblichen Einfuhren sind Bemerkungen erforderlich (z.B. Verwendungszweck)."
+            ))
+
+        return errors
+
+    def _validate_ipk_rules(self, case_fields: dict[str, Any]) -> list[ValidationError]:
+        """IPK-specific validation rules for import parcel traffic."""
+        errors: list[ValidationError] = []
+
+        # Rule: value_amount must be > 0
+        value_amount = case_fields.get("value_amount")
+        if value_amount is not None and isinstance(value_amount, (int, float)) and value_amount <= 0:
+            errors.append(ValidationError(
+                step_key="warenwert",
+                field_key="value_amount",
+                message="Der Warenwert muss größer als 0 sein."
+            ))
+
+        # Rule: origin_country cannot be DE (import from outside Germany)
+        origin_country = case_fields.get("origin_country")
+        if origin_country == "DE":
+            errors.append(ValidationError(
+                step_key="herkunft",
+                field_key="origin_country",
+                message="Das Herkunftsland darf nicht Deutschland sein – es handelt sich um eine Einfuhr."
+            ))
+
+        # Rule: sender_country cannot be DE (import from outside)
+        sender_country = case_fields.get("sender_country")
+        if sender_country == "DE":
+            errors.append(ValidationError(
+                step_key="herkunft",
+                field_key="sender_country",
+                message="Der Lieferant muss außerhalb Deutschlands sitzen."
+            ))
+
+        # Rule: quantity must be at least 1
+        quantity = case_fields.get("quantity")
+        if quantity is not None and isinstance(quantity, (int, float)) and quantity < 1:
+            errors.append(ValidationError(
+                step_key="grunddaten",
+                field_key="quantity",
+                message="Die Anzahl der Packstücke muss mindestens 1 sein."
+            ))
+
+        # Rule: weight_kg must be > 0
+        weight_kg = case_fields.get("weight_kg")
+        if weight_kg is not None and isinstance(weight_kg, (int, float)) and weight_kg <= 0:
+            errors.append(ValidationError(
+                step_key="grunddaten",
+                field_key="weight_kg",
+                message="Das Gewicht muss größer als 0 sein."
+            ))
+
+        return errors
+
+    def _validate_iaa_rules(self, case_fields: dict[str, Any]) -> list[ValidationError]:
+        """IAA-specific validation rules for export declarations."""
+        errors: list[ValidationError] = []
+
+        # Rule: value_amount must be > 0
+        value_amount = case_fields.get("value_amount")
+        if value_amount is not None and isinstance(value_amount, (int, float)) and value_amount <= 0:
+            errors.append(ValidationError(
+                step_key="geschaeftsart",
+                field_key="value_amount",
+                message="Der Warenwert muss größer als 0 sein."
+            ))
+
+        # Rule: sender_country must be DE (export FROM Germany)
+        sender_country = case_fields.get("sender_country")
+        if sender_country and sender_country != "DE":
+            errors.append(ValidationError(
+                step_key="absender",
+                field_key="sender_country",
+                message="Bei einer Ausfuhr aus Deutschland muss das Absenderland Deutschland sein."
+            ))
+
+        # Rule: recipient_country cannot be DE and cannot be EU (export to non-EU)
+        # For simplicity, we just check it's not DE
+        recipient_country = case_fields.get("recipient_country")
+        if recipient_country == "DE":
+            errors.append(ValidationError(
+                step_key="empfaenger",
+                field_key="recipient_country",
+                message="Das Bestimmungsland darf nicht Deutschland sein – es handelt sich um eine Ausfuhr."
+            ))
+
+        # Rule: weight_kg must be > 0
+        weight_kg = case_fields.get("weight_kg")
+        if weight_kg is not None and isinstance(weight_kg, (int, float)) and weight_kg <= 0:
+            errors.append(ValidationError(
+                step_key="geschaeftsart",
+                field_key="weight_kg",
+                message="Das Gewicht muss größer als 0 sein."
+            ))
+
+        # Rule: export_type must be one of the allowed values
+        export_type = case_fields.get("export_type")
+        allowed_types = ["Verkauf", "Muster", "Reparatur", "Rücksendung", "Sonstige"]
+        if export_type and export_type not in allowed_types:
+            errors.append(ValidationError(
+                step_key="geschaeftsart",
+                field_key="export_type",
+                message=f"Bitte wählen Sie eine gültige Geschäftsart: {', '.join(allowed_types)}."
             ))
 
         return errors

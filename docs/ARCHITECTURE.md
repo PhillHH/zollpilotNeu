@@ -432,7 +432,54 @@ as data rather than UI code. This allows:
 - Checks: required fields, type constraints, config rules
 - Returns structured errors: { stepKey, fieldKey, message }
 
-See `docs/PROCEDURES.md` for implementation details.
+See `docs/PROCEDURES/OVERVIEW.md` for implementation details.
+
+### Procedure Config Layer (Sprint 9)
+
+The Frontend Procedure Config provides a declarative way to define procedure-specific configurations that are used by the Wizard and Mapping View.
+
+**Structure:**
+
+```
+apps/web/src/procedures/
+├── types.ts                 # Type definitions
+├── index.ts                 # Procedure Registry
+├── IZA/v1/                  # IZA v1 config
+│   ├── meta.ts              # Name, Code, Target audience
+│   ├── steps.ts             # Wizard steps & fields
+│   ├── mapping.ts           # Form field mappings
+│   ├── hints.ts             # Knowledge base hints
+│   └── index.ts             # Export
+├── IPK/v1/                  # IPK v1 config
+└── IAA/v1/                  # IAA v1 config
+```
+
+**Available Procedures (Sprint 9):**
+
+| Code | Version | Name | Target Audience |
+|------|---------|------|-----------------|
+| IZA | v1 | Internetbestellung – Import Zollanmeldung | Private |
+| IPK | v1 | Import-Paketverkehr | Business |
+| IAA | v1 | Internet-Ausfuhranmeldung | Business |
+
+**Configuration Files:**
+
+- `meta.ts`: Procedure metadata (code, name, description, target audience)
+- `steps.ts`: Wizard step definitions with fields and validation rules
+- `mapping.ts`: Field-to-Zoll-form mappings with hints
+- `hints.ts`: Knowledge base explanations for fields
+
+**Registry Access:**
+
+```typescript
+import { getProcedureConfig, getAllProcedures } from "@/procedures";
+
+// Get all active procedures
+const procedures = getAllProcedures();
+
+// Get specific procedure config
+const config = getProcedureConfig("IZA", "v1");
+```
 
 ### Wizard Renderer v1 (Frontend)
 
@@ -571,6 +618,72 @@ processing. This foundation enables future monetization.
 - Consume (future): -1 credit per action, reason="ACTION_NAME"
 
 Balance updates are atomic: ledger entry + balance update in same operation.
+
+### Security Layer (Sprint 10)
+
+The Security Layer enforces strict tenant isolation and role-based access control across the entire application.
+
+**Non-Negotiables:**
+1. **Tenant isolation is absolute** – No "best effort", no exceptions
+2. **Server decides** – No client-provided tenant_id trusted
+3. **Fail secure** – On error, access is denied (not granted)
+4. **No information leakage** – Cross-tenant access returns 404, not 403
+
+**Core Components:**
+
+```
+apps/api/app/core/
+├── tenant_guard.py      # require_tenant_scope(), build_tenant_where()
+├── role_guard.py        # require_admin(), require_tenant_admin()
+├── security_events.py   # log_security_event(), SecurityEventType
+└── rbac.py              # Role enum, role_at_least()
+```
+
+**Tenant Guards:**
+
+```python
+from app.core.tenant_guard import require_tenant_scope, build_tenant_where
+
+# 1. Always include tenant_id in WHERE
+case = await prisma.case.find_first(
+    where=build_tenant_where(context.tenant["id"], id=case_id)
+)
+
+# 2. Verify result (defense in depth)
+verified = require_tenant_scope(
+    resource=case,
+    resource_type="Case",
+    resource_id=case_id,
+    current_tenant_id=context.tenant["id"],
+    user_id=context.user["id"],
+)
+```
+
+**Security Event Logging:**
+
+All access violations are logged for audit:
+
+| Event | Severity | Description |
+|-------|----------|-------------|
+| `tenant_scope_violation` | WARNING | Cross-tenant access attempt |
+| `role_violation` | WARNING | Unauthorized role access |
+| `auth_required` | INFO | Unauthenticated request |
+| `admin_access` | INFO | Admin endpoint accessed |
+
+**Frontend Route Protection:**
+
+```typescript
+// Server-side auth checks (redirects, not errors)
+export default async function AdminLayout({ children }) {
+  const session = await fetchSession();
+  requireSession(session);  // → /login
+  requireAdmin(session);    // → /app
+
+  return <AdminShell>{children}</AdminShell>;
+}
+```
+
+See `docs/SECURITY/TENANT_ISOLATION.md` for detailed documentation.
 
 ### Case Lifecycle & Versioning
 

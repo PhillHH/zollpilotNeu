@@ -41,8 +41,28 @@ All error codes are centrally defined and consistently used across the API.
 |------|-------------|-------------|
 | `AUTH_REQUIRED` | 401 | Authentication required (no session) |
 | `INVALID_CREDENTIALS` | 401 | Email or password incorrect |
+| `INVALID_SESSION` | 401 | Session token invalid or expired |
+| `NO_MEMBERSHIP` | 401 | User has no tenant membership |
+| `NO_TENANT` | 401 | User's tenant not found |
 | `FORBIDDEN` | 403 | Insufficient permissions (RBAC) |
 | `EMAIL_IN_USE` | 409 | Email already registered |
+
+**Authorization Behavior:**
+
+- **Tenant Isolation**: Users can only access resources belonging to their tenant
+- **Cross-Tenant Access**: Returns `404 NOT_FOUND` (not `403`) to avoid leaking resource existence
+- **Admin Endpoints**: All `/admin/*` endpoints require `SYSTEM_ADMIN` role
+- **Security Logging**: All access violations are logged for audit
+
+**Role Hierarchy:**
+
+| Role | Level | Description |
+|------|-------|-------------|
+| `SYSTEM_ADMIN` | 5 | Full system access (ZollPilot internal) |
+| `OWNER` | 4 | Tenant owner |
+| `ADMIN` | 3 | Tenant administrator |
+| `EDITOR` | 2 | Content editor (blog/FAQ) |
+| `USER` | 1 | Standard user |
 
 ### Not Found (404)
 
