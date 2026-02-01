@@ -432,7 +432,54 @@ as data rather than UI code. This allows:
 - Checks: required fields, type constraints, config rules
 - Returns structured errors: { stepKey, fieldKey, message }
 
-See `docs/PROCEDURES.md` for implementation details.
+See `docs/PROCEDURES/OVERVIEW.md` for implementation details.
+
+### Procedure Config Layer (Sprint 9)
+
+The Frontend Procedure Config provides a declarative way to define procedure-specific configurations that are used by the Wizard and Mapping View.
+
+**Structure:**
+
+```
+apps/web/src/procedures/
+├── types.ts                 # Type definitions
+├── index.ts                 # Procedure Registry
+├── IZA/v1/                  # IZA v1 config
+│   ├── meta.ts              # Name, Code, Target audience
+│   ├── steps.ts             # Wizard steps & fields
+│   ├── mapping.ts           # Form field mappings
+│   ├── hints.ts             # Knowledge base hints
+│   └── index.ts             # Export
+├── IPK/v1/                  # IPK v1 config
+└── IAA/v1/                  # IAA v1 config
+```
+
+**Available Procedures (Sprint 9):**
+
+| Code | Version | Name | Target Audience |
+|------|---------|------|-----------------|
+| IZA | v1 | Internetbestellung – Import Zollanmeldung | Private |
+| IPK | v1 | Import-Paketverkehr | Business |
+| IAA | v1 | Internet-Ausfuhranmeldung | Business |
+
+**Configuration Files:**
+
+- `meta.ts`: Procedure metadata (code, name, description, target audience)
+- `steps.ts`: Wizard step definitions with fields and validation rules
+- `mapping.ts`: Field-to-Zoll-form mappings with hints
+- `hints.ts`: Knowledge base explanations for fields
+
+**Registry Access:**
+
+```typescript
+import { getProcedureConfig, getAllProcedures } from "@/procedures";
+
+// Get all active procedures
+const procedures = getAllProcedures();
+
+// Get specific procedure config
+const config = getProcedureConfig("IZA", "v1");
+```
 
 ### Wizard Renderer v1 (Frontend)
 

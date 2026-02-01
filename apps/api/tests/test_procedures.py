@@ -168,6 +168,8 @@ class FakeProcedureModel:
         self._steps: list[dict] = []
         self._fields: list[dict] = []
         self._seed_iza()
+        self._seed_ipk()
+        self._seed_iaa()
 
     def _seed_iza(self) -> None:
         proc_id = str(uuid.uuid4())
@@ -213,6 +215,131 @@ class FakeProcedureModel:
             {"id": str(uuid.uuid4()), "procedure_step_id": step_person_id, "field_key": "recipient_name", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 100}, "order": 1},
             {"id": str(uuid.uuid4()), "procedure_step_id": step_person_id, "field_key": "recipient_address", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 200}, "order": 2},
             {"id": str(uuid.uuid4()), "procedure_step_id": step_person_id, "field_key": "is_business", "field_type": "BOOLEAN", "required": False, "config_json": {}, "order": 3},
+        ])
+
+    def _seed_ipk(self) -> None:
+        """Seed IPK v1 procedure for testing."""
+        proc_id = str(uuid.uuid4())
+        step_grunddaten_id = str(uuid.uuid4())
+        step_warenwert_id = str(uuid.uuid4())
+        step_herkunft_id = str(uuid.uuid4())
+
+        self._procedures.append({
+            "id": proc_id,
+            "code": "IPK",
+            "name": "Import-Paketverkehr",
+            "version": "v1",
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        })
+
+        # Step 1: Grunddaten
+        self._steps.append({
+            "id": step_grunddaten_id,
+            "procedure_id": proc_id,
+            "step_key": "grunddaten",
+            "title": "Grunddaten",
+            "order": 1,
+            "is_active": True,
+        })
+        self._fields.extend([
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_grunddaten_id, "field_key": "sendungsnummer", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 50}, "order": 1},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_grunddaten_id, "field_key": "contents_description", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 500}, "order": 2},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_grunddaten_id, "field_key": "quantity", "field_type": "NUMBER", "required": True, "config_json": {"min": 1}, "order": 3},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_grunddaten_id, "field_key": "weight_kg", "field_type": "NUMBER", "required": True, "config_json": {"min": 0.01}, "order": 4},
+        ])
+
+        # Step 2: Warenwert
+        self._steps.append({
+            "id": step_warenwert_id,
+            "procedure_id": proc_id,
+            "step_key": "warenwert",
+            "title": "Warenwert",
+            "order": 2,
+            "is_active": True,
+        })
+        self._fields.extend([
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_warenwert_id, "field_key": "value_amount", "field_type": "NUMBER", "required": True, "config_json": {"min": 0.01}, "order": 1},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_warenwert_id, "field_key": "value_currency", "field_type": "CURRENCY", "required": True, "config_json": {}, "order": 2},
+        ])
+
+        # Step 3: Herkunft
+        self._steps.append({
+            "id": step_herkunft_id,
+            "procedure_id": proc_id,
+            "step_key": "herkunft",
+            "title": "Herkunft",
+            "order": 3,
+            "is_active": True,
+        })
+        self._fields.extend([
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_herkunft_id, "field_key": "origin_country", "field_type": "COUNTRY", "required": True, "config_json": {}, "order": 1},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_herkunft_id, "field_key": "sender_name", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 200}, "order": 2},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_herkunft_id, "field_key": "sender_country", "field_type": "COUNTRY", "required": True, "config_json": {}, "order": 3},
+        ])
+
+    def _seed_iaa(self) -> None:
+        """Seed IAA v1 procedure for testing."""
+        proc_id = str(uuid.uuid4())
+        step_absender_id = str(uuid.uuid4())
+        step_empfaenger_id = str(uuid.uuid4())
+        step_geschaeftsart_id = str(uuid.uuid4())
+
+        self._procedures.append({
+            "id": proc_id,
+            "code": "IAA",
+            "name": "Internet-Ausfuhranmeldung",
+            "version": "v1",
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        })
+
+        # Step 1: Absender
+        self._steps.append({
+            "id": step_absender_id,
+            "procedure_id": proc_id,
+            "step_key": "absender",
+            "title": "Absender",
+            "order": 1,
+            "is_active": True,
+        })
+        self._fields.extend([
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_absender_id, "field_key": "sender_company", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 200}, "order": 1},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_absender_id, "field_key": "sender_name", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 100}, "order": 2},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_absender_id, "field_key": "sender_country", "field_type": "COUNTRY", "required": True, "config_json": {}, "order": 3},
+        ])
+
+        # Step 2: Empfänger
+        self._steps.append({
+            "id": step_empfaenger_id,
+            "procedure_id": proc_id,
+            "step_key": "empfaenger",
+            "title": "Empfänger",
+            "order": 2,
+            "is_active": True,
+        })
+        self._fields.extend([
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_empfaenger_id, "field_key": "recipient_name", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 200}, "order": 1},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_empfaenger_id, "field_key": "recipient_country", "field_type": "COUNTRY", "required": True, "config_json": {}, "order": 2},
+        ])
+
+        # Step 3: Geschäftsart
+        self._steps.append({
+            "id": step_geschaeftsart_id,
+            "procedure_id": proc_id,
+            "step_key": "geschaeftsart",
+            "title": "Geschäftsart",
+            "order": 3,
+            "is_active": True,
+        })
+        self._fields.extend([
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_geschaeftsart_id, "field_key": "export_type", "field_type": "SELECT", "required": True, "config_json": {"options": ["Verkauf", "Muster", "Reparatur", "Rücksendung", "Sonstige"]}, "order": 1},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_geschaeftsart_id, "field_key": "contents_description", "field_type": "TEXT", "required": True, "config_json": {"maxLength": 500}, "order": 2},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_geschaeftsart_id, "field_key": "value_amount", "field_type": "NUMBER", "required": True, "config_json": {"min": 0.01}, "order": 3},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_geschaeftsart_id, "field_key": "value_currency", "field_type": "CURRENCY", "required": True, "config_json": {}, "order": 4},
+            {"id": str(uuid.uuid4()), "procedure_step_id": step_geschaeftsart_id, "field_key": "weight_kg", "field_type": "NUMBER", "required": True, "config_json": {"min": 0.01}, "order": 5},
         ])
 
     async def find_many(self, where: dict | None = None, order: dict | None = None, include: dict | None = None) -> list[dict]:
@@ -452,4 +579,164 @@ def test_validation_without_bound_procedure_returns_error(proc_context: Procedur
     assert response.status_code == 400
     body = response.json()
     assert body["error"]["code"] == "NO_PROCEDURE_BOUND"
+
+
+# ============================================================================
+# IPK v1 Tests
+# ============================================================================
+
+
+def test_list_procedures_includes_ipk(proc_context: ProcedureTestContext) -> None:
+    """GET /procedures returns IPK procedure."""
+    # Register user
+    response = proc_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # List procedures
+    response = proc_context.client.get("/procedures")
+    assert response.status_code == 200
+    body = response.json()
+    codes = [p["code"] for p in body["data"]]
+    assert "IPK" in codes
+
+
+def test_get_procedure_ipk_returns_steps_and_fields(proc_context: ProcedureTestContext) -> None:
+    """GET /procedures/IPK returns steps and fields."""
+    # Register user
+    response = proc_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Get IPK procedure
+    response = proc_context.client.get("/procedures/IPK")
+    assert response.status_code == 200
+    body = response.json()
+
+    proc = body["data"]
+    assert proc["code"] == "IPK"
+    assert proc["name"] == "Import-Paketverkehr"
+    assert len(proc["steps"]) == 3
+
+    # Check steps
+    step_keys = [s["step_key"] for s in proc["steps"]]
+    assert "grunddaten" in step_keys
+    assert "warenwert" in step_keys
+    assert "herkunft" in step_keys
+
+
+def test_bind_ipk_procedure_to_case(proc_context: ProcedureTestContext) -> None:
+    """POST /cases/{id}/procedure binds IPK procedure to case."""
+    # Register user
+    response = proc_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Create case
+    response = proc_context.client.post("/cases", json={"title": "Test IPK Case"})
+    assert response.status_code == 201
+    case_id = response.json()["data"]["id"]
+
+    # Bind procedure
+    response = proc_context.client.post(
+        f"/cases/{case_id}/procedure",
+        json={"procedure_code": "IPK"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["procedure_code"] == "IPK"
+    assert body["data"]["procedure_version"] == "v1"
+
+
+# ============================================================================
+# IAA v1 Tests
+# ============================================================================
+
+
+def test_list_procedures_includes_iaa(proc_context: ProcedureTestContext) -> None:
+    """GET /procedures returns IAA procedure."""
+    # Register user
+    response = proc_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # List procedures
+    response = proc_context.client.get("/procedures")
+    assert response.status_code == 200
+    body = response.json()
+    codes = [p["code"] for p in body["data"]]
+    assert "IAA" in codes
+
+
+def test_get_procedure_iaa_returns_steps_and_fields(proc_context: ProcedureTestContext) -> None:
+    """GET /procedures/IAA returns steps and fields."""
+    # Register user
+    response = proc_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Get IAA procedure
+    response = proc_context.client.get("/procedures/IAA")
+    assert response.status_code == 200
+    body = response.json()
+
+    proc = body["data"]
+    assert proc["code"] == "IAA"
+    assert proc["name"] == "Internet-Ausfuhranmeldung"
+    assert len(proc["steps"]) == 3
+
+    # Check steps
+    step_keys = [s["step_key"] for s in proc["steps"]]
+    assert "absender" in step_keys
+    assert "empfaenger" in step_keys
+    assert "geschaeftsart" in step_keys
+
+
+def test_bind_iaa_procedure_to_case(proc_context: ProcedureTestContext) -> None:
+    """POST /cases/{id}/procedure binds IAA procedure to case."""
+    # Register user
+    response = proc_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # Create case
+    response = proc_context.client.post("/cases", json={"title": "Test IAA Case"})
+    assert response.status_code == 201
+    case_id = response.json()["data"]["id"]
+
+    # Bind procedure
+    response = proc_context.client.post(
+        f"/cases/{case_id}/procedure",
+        json={"procedure_code": "IAA"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["procedure_code"] == "IAA"
+    assert body["data"]["procedure_version"] == "v1"
+
+
+def test_all_three_procedures_available(proc_context: ProcedureTestContext) -> None:
+    """GET /procedures returns all three procedures: IZA, IPK, IAA."""
+    # Register user
+    response = proc_context.client.post(
+        "/auth/register", json={"email": "a@b.com", "password": "Secret123!"}
+    )
+    assert response.status_code == 201
+
+    # List procedures
+    response = proc_context.client.get("/procedures")
+    assert response.status_code == 200
+    body = response.json()
+    codes = [p["code"] for p in body["data"]]
+
+    assert "IZA" in codes
+    assert "IPK" in codes
+    assert "IAA" in codes
+    assert len(codes) == 3
 
