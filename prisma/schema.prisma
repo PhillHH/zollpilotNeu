@@ -159,14 +159,33 @@ model Case {
   procedure_id        String?
   procedure_version   String?
 
-  tenant     Tenant         @relation(fields: [tenant_id], references: [id])
-  created_by User           @relation(fields: [created_by_user_id], references: [id])
-  fields     CaseField[]
-  procedure  Procedure?     @relation(fields: [procedure_id], references: [id])
-  snapshots  CaseSnapshot[]
+  tenant          Tenant          @relation(fields: [tenant_id], references: [id])
+  created_by      User            @relation(fields: [created_by_user_id], references: [id])
+  fields          CaseField[]
+  procedure       Procedure?      @relation(fields: [procedure_id], references: [id])
+  snapshots       CaseSnapshot[]
+  wizard_progress WizardProgress?
 
   @@index([tenant_id])
   @@index([procedure_id])
+}
+
+// --- Wizard Progress (generisches Wizard-System) ---
+
+model WizardProgress {
+  id              String   @id @default(uuid())
+  case_id         String   @unique  // 1:1 Relation zu Case
+  procedure_code  String             // IZA, IAA, IPK
+  current_step    String             // Aktueller Step-Key
+  completed_steps Json     @default("[]")  // Array von Step-Keys
+  is_completed    Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  case Case @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  @@index([case_id])
+  @@index([procedure_code])
 }
 
 model CaseField {
@@ -185,9 +204,10 @@ model CaseField {
 }
 
 enum CaseStatus {
-  DRAFT
-  SUBMITTED
-  ARCHIVED
+  DRAFT       // Fall angelegt, kein Verfahren gestartet
+  IN_PROCESS  // Verfahren gewählt, Bearbeitung läuft
+  SUBMITTED   // Anmeldung abgegeben
+  ARCHIVED    // Fall abgeschlossen / abgelegt
 }
 
 model CaseSnapshot {

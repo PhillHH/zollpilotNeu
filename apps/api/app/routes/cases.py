@@ -14,6 +14,12 @@ from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
 from app.core.json import normalize_to_json
 from app.core.tenant_guard import require_tenant_scope, build_tenant_where
+from app.domain.case_status import (
+    can_edit_fields,
+    validate_status_transition,
+    CaseStatus,
+    can_access_wizard,
+)
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -292,13 +298,13 @@ async def upsert_field(
 
     case = await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
 
-    # Block updates for non-DRAFT cases
-    if case["status"] != "DRAFT":
+    # Block updates for non-editable cases (only DRAFT and IN_PROCESS allow edits)
+    if not can_edit_fields(case["status"]):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "code": "CASE_NOT_EDITABLE",
-                "message": "Fields can only be edited in DRAFT status.",
+                "message": f"Fields can only be edited in DRAFT or IN_PROCESS status. Current status: {case['status']}.",
             },
         )
 
@@ -315,4 +321,121 @@ async def upsert_field(
     return FieldSingleResponse(
         data=FieldResponse(key=field.key, value=field.value_json, updated_at=field.updated_at)
     )
+
+
+# --- Wizard Access Guard API ---
+
+
+class WizardAccessResponse(BaseModel):
+    """Response für Wizard-Zugangsprüfung."""
+    allowed: bool
+    error_code: str | None = None
+    error_message: str | None = None
+
+
+@router.get("/{case_id}/wizard-access", response_model=WizardAccessResponse, tags=["case-wizard"])
+async def check_wizard_access(
+    case_id: str,
+    context: AuthContext = Depends(get_current_user),
+) -> WizardAccessResponse:
+    """
+    Prüft ob der Wizard für diesen Case betreten werden darf.
+
+    Die Verfahrensauswahl ist eine SYSTEMGRENZE:
+    - Kein Wizard-Zugriff ohne gebundenes Verfahren (procedure != null)
+    - Kein Wizard-Zugriff wenn nicht IN_PROCESS
+
+    Dieser Endpoint dient als serverseitiger Guard für die UI.
+    Frontend sollte diesen Endpoint vor dem Wizard-Start aufrufen.
+
+    Returns:
+        WizardAccessResponse mit allowed=True wenn erlaubt,
+        sonst allowed=False mit error_code und error_message.
+    """
+    case = await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
+
+    result = can_access_wizard(case["status"], case.get("procedure_id"))
+
+    return WizardAccessResponse(
+        allowed=result.allowed,
+        error_code=result.error_code,
+        error_message=result.error_message,
+    )
+
+
+# --- Status API ---
+
+
+class StatusUpdateRequest(BaseModel):
+    """Request für expliziten Statuswechsel."""
+    status: str
+
+
+class StatusUpdateResponse(BaseModel):
+    """Response für Statuswechsel."""
+    data: CaseSummary
+
+
+@router.patch("/{case_id}/status", response_model=StatusUpdateResponse, tags=["case-status"])
+async def update_case_status(
+    case_id: str,
+    payload: StatusUpdateRequest,
+    context: AuthContext = Depends(get_current_user),
+) -> StatusUpdateResponse:
+    """
+    Expliziter Statuswechsel für einen Case.
+
+    Erlaubte Übergänge:
+    - DRAFT → IN_PROCESS (wenn Verfahren gebunden)
+    - IN_PROCESS → SUBMITTED (wenn validiert, besser via /submit)
+    - SUBMITTED → ARCHIVED
+
+    Keine Rücksprünge, kein Überspringen.
+
+    Hinweis: Für SUBMITTED wird empfohlen, /cases/{id}/submit zu verwenden,
+    da dort auch die Validierung und Snapshot-Erstellung erfolgt.
+    """
+    case = await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
+
+    current_status = case["status"]
+    target_status = payload.status.upper()
+
+    # Validiere Statusübergang
+    result = validate_status_transition(current_status, target_status)
+
+    if not result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": result.error_code,
+                "message": result.error_message,
+            },
+        )
+
+    # Spezielle Prüfungen je nach Zielstatus
+    if target_status == CaseStatus.IN_PROCESS.value:
+        # Verfahren muss gebunden sein
+        if not case.get("procedure_id"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "NO_PROCEDURE_BOUND",
+                    "message": "Cannot transition to IN_PROCESS without a bound procedure.",
+                },
+            )
+
+    # Update durchführen
+    update_data: dict[str, Any] = {"status": target_status}
+
+    if target_status == CaseStatus.SUBMITTED.value:
+        update_data["submitted_at"] = datetime.utcnow()
+    elif target_status == CaseStatus.ARCHIVED.value:
+        update_data["archived_at"] = datetime.utcnow()
+
+    updated_case = await prisma.case.update(
+        where={"id": case_id},
+        data=update_data,
+    )
+
+    return StatusUpdateResponse(data=CaseSummary(**updated_case.model_dump()))
 

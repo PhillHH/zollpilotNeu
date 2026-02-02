@@ -1,0 +1,16 @@
+# Local development overrides
+# This file is automatically merged with docker-compose.yml
+# It overrides production settings for localhost development
+
+services:
+  api:
+    environment:
+      # Cookie settings for localhost (HTTP, not HTTPS)
+      SESSION_COOKIE_SECURE: "false"
+      SESSION_COOKIE_DOMAIN: "localhost"
+      # Allow localhost origin
+      WEB_ORIGIN: "http://localhost:1887"
+
+  web:
+    environment:
+      NEXT_PUBLIC_BASE_URL: "http://localhost:1887"

@@ -5,6 +5,12 @@ Provides:
 - Submit case (with validation gate)
 - List snapshots
 - Get snapshot detail
+
+WICHTIG zur Abgabe (Submit):
+- Submit ist ein explizites, irreversibles Domänenereignis
+- Markiert die interne Vorbereitung als abgeschlossen
+- ZollPilot übermittelt NICHT an den Zoll
+- Nach Submit ist der Case/Wizard read-only
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
 from app.domain.procedures import procedure_loader, validate_case_fields
 from app.domain.summary import generate_case_summary, SummaryItem, SummarySection
+from app.domain.case_status import can_submit, CaseStatus
 from app.core.json import normalize_to_json
 
 
@@ -28,14 +35,30 @@ router = APIRouter(prefix="/cases", tags=["case-lifecycle"])
 # --- Response Models ---
 
 
+class SubmitResultData(BaseModel):
+    """Ergebnis einer erfolgreichen Abgabe."""
+    case_id: str
+    status: str
+    procedure_code: str
+    submitted_at: datetime
+    version: int
+    snapshot_id: str
+
+
 class SubmitResponse(BaseModel):
+    """API-Response für Abgabe."""
+    data: SubmitResultData
+
+
+# Legacy response for backwards compatibility
+class SubmitResponseLegacy(BaseModel):
     status: str
     version: int
     snapshot_id: str
 
 
 class SubmitResponseWrapper(BaseModel):
-    data: SubmitResponse
+    data: SubmitResponseLegacy
 
 
 class SnapshotSummary(BaseModel):
@@ -95,7 +118,7 @@ async def _get_case_with_fields(case_id: str, tenant_id: str):
     """Get case with fields or raise 404."""
     case = await prisma.case.find_first(
         where={"id": case_id, "tenant_id": tenant_id},
-        include={"fields": True, "procedure": True},
+        include={"fields": True, "procedure": True, "wizard_progress": True},
     )
     if not case:
         raise HTTPException(
@@ -108,47 +131,83 @@ async def _get_case_with_fields(case_id: str, tenant_id: str):
 # --- Endpoints ---
 
 
-@router.post("/{case_id}/submit", response_model=SubmitResponseWrapper)
+@router.post("/{case_id}/submit", response_model=SubmitResponse)
 async def submit_case(
     case_id: str,
     context: AuthContext = Depends(get_current_user),
-) -> SubmitResponseWrapper:
+) -> SubmitResponse:
     """
-    Submit a case.
-    
-    - Validates the case
-    - If invalid, returns 409 CASE_INVALID
-    - Creates a snapshot
-    - Sets status to SUBMITTED
-    - Idempotent: if already SUBMITTED, returns existing info
+    Submit a case - EXPLIZITES DOMÄNENEREIGNIS.
+
+    Die Abgabe ist ein irreversibler Vorgang, der:
+    - Die interne Vorbereitung als abgeschlossen markiert
+    - Den Case-Status auf SUBMITTED setzt
+    - Den Wizard als abgeschlossen markiert
+    - Einen Zeitstempel (submitted_at) setzt
+
+    WICHTIG:
+    - ZollPilot übermittelt NICHT an den Zoll
+    - Nach Submit ist der Case/Wizard read-only
+    - Kein automatisches Submit - nur expliziter Benutzeraktionen
+
+    Voraussetzungen:
+    - case.status == IN_PROCESS
+    - wizard.is_completed == true (alle Steps abgeschlossen)
+    - Alle Pflichtfelder ausgefüllt
+
+    Status transition: IN_PROCESS → SUBMITTED (irreversibel)
+
+    Fehlerfälle:
+    - WIZARD_NOT_COMPLETED: Wizard nicht vollständig abgeschlossen
+    - CASE_NOT_IN_PROCESS: Falscher Case-Status
+    - CASE_INVALID: Validierungsfehler bei Pflichtfeldern
     """
     case = await _get_case_with_fields(case_id, context.tenant["id"])
 
     # Idempotent: if already submitted, return existing state
-    if case.status == "SUBMITTED":
-        # Find existing snapshot
+    if case.status == CaseStatus.SUBMITTED.value:
         snapshot = await prisma.casesnapshot.find_first(
             where={"case_id": case_id, "version": case.version},
             order={"created_at": "desc"},
         )
         if snapshot:
-            return SubmitResponseWrapper(
-                data=SubmitResponse(
+            return SubmitResponse(
+                data=SubmitResultData(
+                    case_id=case_id,
                     status="SUBMITTED",
+                    procedure_code=case.procedure.code if case.procedure else "",
+                    submitted_at=case.submitted_at or snapshot.created_at,
                     version=case.version,
                     snapshot_id=snapshot.id,
                 )
             )
 
-    # Check if case is in DRAFT status
-    if case.status == "ARCHIVED":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "CASE_ARCHIVED",
-                "message": "Archived cases cannot be submitted.",
-            },
-        )
+    # Check if case can be submitted (must be IN_PROCESS)
+    if not can_submit(case.status):
+        if case.status == CaseStatus.DRAFT.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "CASE_NOT_IN_PROCESS",
+                    "message": "Case is still in DRAFT status. Bind a procedure first to transition to IN_PROCESS.",
+                },
+            )
+        elif case.status == CaseStatus.ARCHIVED.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "CASE_ARCHIVED",
+                    "message": "Archived cases cannot be submitted.",
+                },
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "INVALID_STATUS",
+                    "message": f"Case cannot be submitted from status {case.status}. Must be IN_PROCESS.",
+                },
+            )
 
     # Check if procedure is bound
     if not case.procedure_id or not case.procedure:
@@ -157,6 +216,48 @@ async def submit_case(
             detail={
                 "code": "NO_PROCEDURE_BOUND",
                 "message": "Case has no procedure bound. Bind a procedure first.",
+            },
+        )
+
+    # === WIZARD COMPLETION CHECK ===
+    # Wizard muss vollständig abgeschlossen sein
+    wizard_progress = case.wizard_progress
+    if not wizard_progress:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "WIZARD_NOT_INITIALIZED",
+                "message": "Wizard has not been started. Complete all wizard steps before submitting.",
+            },
+        )
+
+    if not wizard_progress.is_completed:
+        # Prüfe welche Steps noch fehlen
+        from app.domain.wizard_steps import get_procedure_steps
+        steps_config = get_procedure_steps(case.procedure.code)
+        completed_steps = wizard_progress.completed_steps if isinstance(wizard_progress.completed_steps, list) else []
+
+        if steps_config:
+            missing_steps = [
+                step.step_key for step in steps_config.steps
+                if step.step_key not in completed_steps and step.step_key != "review"
+            ]
+            if missing_steps:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "code": "WIZARD_NOT_COMPLETED",
+                        "message": f"Complete all wizard steps before submitting. Missing: {', '.join(missing_steps)}",
+                        "details": {"missing_steps": missing_steps},
+                    },
+                )
+
+        # Wenn keine Steps fehlen aber is_completed == False, ist Review noch nicht fertig
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "WIZARD_NOT_COMPLETED",
+                "message": "Complete the review step before submitting.",
             },
         )
 
@@ -182,7 +283,6 @@ async def submit_case(
     validation_result = await validate_case_fields(procedure, fields_dict)
 
     if not validation_result.valid:
-        # Return 409 with validation errors
         errors = [
             {"step_key": e.step_key, "field_key": e.field_key, "message": e.message}
             for e in validation_result.errors
@@ -196,7 +296,11 @@ async def submit_case(
             },
         )
 
-    # Create snapshot with normalized JSON fields
+    # === ATOMARE ABGABE ===
+    # Timestamp für Submit
+    submitted_at = datetime.now(timezone.utc)
+
+    # Create snapshot
     snapshot = await prisma.casesnapshot.create(
         data={
             "case_id": case_id,
@@ -208,18 +312,28 @@ async def submit_case(
         }
     )
 
-    # Update case status
+    # Update case status atomically
     await prisma.case.update(
         where={"id": case_id},
         data={
             "status": "SUBMITTED",
-            "submitted_at": datetime.now(timezone.utc),
+            "submitted_at": submitted_at,
         },
     )
 
-    return SubmitResponseWrapper(
-        data=SubmitResponse(
+    # Wizard als abgeschlossen markieren (falls noch nicht)
+    if wizard_progress and not wizard_progress.is_completed:
+        await prisma.wizardprogress.update(
+            where={"id": wizard_progress.id},
+            data={"is_completed": True},
+        )
+
+    return SubmitResponse(
+        data=SubmitResultData(
+            case_id=case_id,
             status="SUBMITTED",
+            procedure_code=case.procedure.code,
+            submitted_at=submitted_at,
             version=case.version,
             snapshot_id=snapshot.id,
         )

@@ -26,6 +26,7 @@ from app.domain.procedures import (
     procedure_loader,
     validate_case_fields,
 )
+from app.domain.case_status import can_bind_procedure, CaseStatus
 
 
 router = APIRouter(prefix="/procedures", tags=["procedures"])
@@ -76,8 +77,17 @@ class BindProcedureRequest(BaseModel):
     procedure_code: str
 
 
+class BindProcedureResult(BaseModel):
+    """Ergebnis einer Verfahrensbindung."""
+    case_id: str
+    procedure_code: str
+    procedure_version: str
+    status: str
+    is_rebind: bool = False
+
+
 class BindProcedureResponse(BaseModel):
-    data: dict[str, Any]
+    data: BindProcedureResult
 
 
 class ValidationErrorResponse(BaseModel):
@@ -185,25 +195,76 @@ async def bind_procedure(
     context: AuthContext = Depends(get_current_user),
 ) -> BindProcedureResponse:
     """
-    Bind a procedure to a case.
-    
-    Sets the case's procedure_id and procedure_version.
-    Idempotent: binding the same procedure again is a no-op.
+    Bind a procedure to a case - SYSTEMGRENZE.
+
+    Die Verfahrensauswahl ist ein explizites Domänenereignis:
+    - Markiert den verbindlichen Start des Prozesses
+    - Case wechselt von DRAFT zu IN_PROCESS
+    - Ab diesem Moment kann der Wizard starten
+
+    Status-Übergänge:
+    - DRAFT → IN_PROCESS (automatisch bei erster Bindung)
+    - IN_PROCESS: Re-Binding zu anderem Verfahren erlaubt (explizit)
+
+    Re-Binding-Regel:
+    - Nur in IN_PROCESS erlaubt
+    - Bestehende CaseFields bleiben erhalten (keine Datenverluste)
+    - Felder sind oft verfahrensübergreifend (sender, recipient, value)
+    - Benutzer kann Felder manuell anpassen
+
+    Fehlerfälle:
+    - PROCEDURE_NOT_FOUND: Ungültiges Verfahren
+    - CASE_NOT_EDITABLE: Status nicht DRAFT oder IN_PROCESS
+    - CASE_ALREADY_SUBMITTED: Verfahren bereits eingereicht
     """
     case = await _get_case_or_404(case_id, context.tenant["id"])
+    current_status = case.get("status", "")
+    current_procedure_id = case.get("procedure_id")
 
-    # Load procedure
+    # Validate procedure code format
+    valid_procedures = ["IZA", "IAA", "IPK"]
+    if payload.procedure_code.upper() not in valid_procedures:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "INVALID_PROCEDURE_CODE",
+                "message": f"Invalid procedure code '{payload.procedure_code}'. Valid codes: {', '.join(valid_procedures)}",
+            },
+        )
+
+    # Load procedure from database
     procedure = await procedure_loader.get_by_code(payload.procedure_code)
     if not procedure:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "PROCEDURE_NOT_FOUND",
-                "message": f"Procedure '{payload.procedure_code}' not found.",
+                "message": f"Procedure '{payload.procedure_code}' not found or not active.",
             },
         )
 
-    # Idempotent: if already bound to same procedure/version, return success
+    # === STATUS-BASIERTE VALIDIERUNG ===
+
+    # Case bereits eingereicht oder archiviert?
+    if current_status == CaseStatus.SUBMITTED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "CASE_ALREADY_SUBMITTED",
+                "message": "Cannot change procedure after submission.",
+            },
+        )
+
+    if current_status == CaseStatus.ARCHIVED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "CASE_ARCHIVED",
+                "message": "Cannot change procedure on archived case.",
+            },
+        )
+
+    # Idempotent: gleiche Prozedur/Version bereits gebunden
     if (
         case.get("procedure_id") == procedure.id
         and case.get("procedure_version") == procedure.version
@@ -213,16 +274,43 @@ async def bind_procedure(
                 "case_id": case_id,
                 "procedure_code": procedure.code,
                 "procedure_version": procedure.version,
+                "status": current_status,
+                "is_rebind": False,
             }
         )
 
-    # Update case with procedure binding
-    await prisma.case.update(
+    # === ERLAUBTE ÜBERGÄNGE ===
+
+    is_first_binding = current_status == CaseStatus.DRAFT.value
+    is_rebinding = current_status == CaseStatus.IN_PROCESS.value and current_procedure_id is not None
+
+    if not (is_first_binding or current_status == CaseStatus.IN_PROCESS.value):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "CASE_NOT_EDITABLE",
+                "message": f"Cannot bind procedure in status '{current_status}'. Only DRAFT or IN_PROCESS allowed.",
+            },
+        )
+
+    # === ATOMARE AKTUALISIERUNG ===
+
+    update_data: dict[str, Any] = {
+        "procedure_id": procedure.id,
+        "procedure_version": procedure.version,
+    }
+
+    # Erster Bind: Status-Übergang DRAFT → IN_PROCESS
+    if is_first_binding:
+        update_data["status"] = CaseStatus.IN_PROCESS.value
+
+    # Re-Binding: Status bleibt IN_PROCESS, nur Verfahren wechselt
+    # Bestehende CaseFields werden NICHT gelöscht (bewusste Entscheidung)
+    # Begründung: Viele Felder sind verfahrensübergreifend nutzbar
+
+    updated_case = await prisma.case.update(
         where={"id": case_id},
-        data={
-            "procedure_id": procedure.id,
-            "procedure_version": procedure.version,
-        },
+        data=update_data,
     )
 
     return BindProcedureResponse(
@@ -230,6 +318,8 @@ async def bind_procedure(
             "case_id": case_id,
             "procedure_code": procedure.code,
             "procedure_version": procedure.version,
+            "status": updated_case.status,
+            "is_rebind": is_rebinding,
         }
     )
 

@@ -75,10 +75,20 @@ export async function apiRequest<T>(
 
 // --- Types ---
 
+/**
+ * Verbindliche Case-Status.
+ *
+ * DRAFT: Fall angelegt, kein Verfahren gestartet
+ * IN_PROCESS: Verfahren gewählt, Bearbeitung läuft
+ * SUBMITTED: Anmeldung abgegeben
+ * ARCHIVED: Fall abgeschlossen / abgelegt
+ */
+export type CaseStatus = "DRAFT" | "IN_PROCESS" | "SUBMITTED" | "ARCHIVED";
+
 export type CaseSummary = {
   id: string;
   title: string;
-  status: string;
+  status: CaseStatus;
   created_at: string;
   updated_at: string;
 };
@@ -97,8 +107,19 @@ export type CaseDetail = CaseSummary & {
   fields: CaseField[];
 };
 
+/**
+ * Ergebnis einer erfolgreichen Abgabe.
+ *
+ * Submit ist ein IRREVERSIBLES Domänenereignis:
+ * - Case wird auf SUBMITTED gesetzt
+ * - Wizard wird read-only
+ * - ZollPilot übermittelt NICHT an den Zoll
+ */
 export type SubmitResult = {
+  case_id: string;
   status: string;
+  procedure_code: string;
+  submitted_at: string;
   version: number;
   snapshot_id: string;
 };
@@ -188,6 +209,29 @@ export const cases = {
   archive: (id: string, init?: RequestInit) =>
     apiRequest<CaseSummaryResponse>(`/cases/${id}/archive`, {
       method: "POST",
+      credentials: "include",
+      ...init
+    }),
+
+  /**
+   * Expliziter Statuswechsel für einen Case.
+   * Erlaubte Übergänge: DRAFT→IN_PROCESS, IN_PROCESS→SUBMITTED, SUBMITTED→ARCHIVED
+   */
+  updateStatus: (id: string, status: CaseStatus, init?: RequestInit) =>
+    apiRequest<CaseSummaryResponse>(`/cases/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ status }),
+      ...init
+    }),
+
+  /**
+   * Prüft ob der Wizard für diesen Case betreten werden darf.
+   * Systemgrenze: Kein Wizard ohne gebundenes Verfahren und Status IN_PROCESS.
+   */
+  checkWizardAccess: (id: string, init?: RequestInit) =>
+    apiRequest<{ data: WizardAccessResult }>(`/cases/${id}/wizard-access`, {
       credentials: "include",
       ...init
     }),
@@ -573,6 +617,128 @@ export type BindProcedureResult = {
   case_id: string;
   procedure_code: string;
   procedure_version: string;
+  status: CaseStatus;
+  is_rebind: boolean;
+};
+
+export type WizardAccessResult = {
+  allowed: boolean;
+  error_code: string | null;
+  error_message: string | null;
+};
+
+// --- Wizard Types ---
+
+export type WizardStepInfo = {
+  step_key: string;
+  title: string;
+  description: string;
+  required_fields: string[];
+  is_completed: boolean;
+  is_current: boolean;
+  is_accessible: boolean;
+};
+
+export type WizardState = {
+  case_id: string;
+  procedure_code: string;
+  current_step: string;
+  completed_steps: string[];
+  is_completed: boolean;
+  total_steps: number;
+  current_step_index: number;
+  can_go_back: boolean;
+  can_go_forward: boolean;
+  can_submit: boolean;
+  steps: WizardStepInfo[];
+};
+
+export type WizardNavigationResult = {
+  success: boolean;
+  current_step: string;
+  error_code: string | null;
+  error_message: string | null;
+};
+
+export type WizardStepValidation = {
+  valid: boolean;
+  missing_fields: string[] | null;
+  error_message: string | null;
+};
+
+type WizardResponse = { data: WizardState };
+type WizardNavigateResponse = { data: WizardNavigationResult };
+type WizardCompleteStepResponse = { data: WizardStepValidation };
+
+// --- Wizard API ---
+
+export const wizard = {
+  /**
+   * Holt den aktuellen Wizard-Zustand für einen Case.
+   * Erstellt automatisch einen neuen WizardProgress wenn keiner existiert.
+   */
+  getState: (caseId: string, init?: RequestInit) =>
+    apiRequest<WizardResponse>(`/cases/${caseId}/wizard`, {
+      credentials: "include",
+      ...init
+    }),
+
+  /**
+   * Navigiert zu einem bestimmten Step.
+   * Prüft ob Navigation erlaubt ist (kein Überspringen).
+   */
+  navigate: (caseId: string, targetStep: string, init?: RequestInit) =>
+    apiRequest<WizardNavigateResponse>(`/cases/${caseId}/wizard/navigate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ target_step: targetStep }),
+      ...init
+    }),
+
+  /**
+   * Markiert einen Step als abgeschlossen.
+   * Validiert ob alle Pflichtfelder ausgefüllt sind.
+   */
+  completeStep: (caseId: string, stepKey: string, init?: RequestInit) =>
+    apiRequest<WizardCompleteStepResponse>(`/cases/${caseId}/wizard/complete-step`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ step_key: stepKey }),
+      ...init
+    }),
+
+  /**
+   * Setzt den Wizard-Fortschritt zurück.
+   * Case-Felder bleiben erhalten.
+   */
+  reset: (caseId: string, init?: RequestInit) =>
+    apiRequest<WizardResponse>(`/cases/${caseId}/wizard/reset`, {
+      method: "POST",
+      credentials: "include",
+      ...init
+    }),
+
+  /**
+   * Markiert den Wizard als vollständig abgeschlossen.
+   *
+   * Voraussetzungen:
+   * - Alle Steps (außer review) müssen abgeschlossen sein
+   * - Case muss IN_PROCESS sein
+   *
+   * Nach erfolgreichem Abschluss:
+   * - wizard.is_completed = true
+   * - Case kann submitted werden
+   *
+   * WICHTIG: Nach Submit ist dieser Endpoint blockiert (read-only).
+   */
+  complete: (caseId: string, init?: RequestInit) =>
+    apiRequest<WizardCompleteStepResponse>(`/cases/${caseId}/wizard/complete`, {
+      method: "POST",
+      credentials: "include",
+      ...init
+    }),
 };
 
 type ProcedureListResponse = { data: ProcedureSummary[] };
@@ -1011,6 +1177,65 @@ type AdminFaqDetailResponse = { data: AdminFaqEntry };
 type CategoriesResponse = { data: string[] };
 
 // --- Admin Content API ---
+
+// --- Dashboard Types ---
+
+/**
+ * Dashboard-Metriken - ausschließlich Prozess- und Statusmetriken.
+ * KEINE monetären Werte, KEINE Optimierungsmetriken.
+ */
+
+export type CaseStatusCounts = {
+  /** Anzahl Fälle im Status DRAFT (ohne Verfahren) */
+  drafts: number;
+  /** Anzahl Fälle im Status IN_PROCESS (in Bearbeitung) */
+  in_process: number;
+  /** Anzahl Fälle im Status SUBMITTED (eingereicht) */
+  submitted: number;
+  /** Anzahl Fälle im Status ARCHIVED (archiviert) */
+  archived: number;
+  /** Gesamtanzahl aller Fälle */
+  total: number;
+};
+
+export type DailyActivity = {
+  /** Datum im Format YYYY-MM-DD */
+  date: string;
+  /** Anzahl an diesem Tag erstellter Fälle */
+  cases_created: number;
+  /** Anzahl an diesem Tag eingereichter Fälle */
+  cases_submitted: number;
+};
+
+export type ActivitySummary = {
+  /** Zeitpunkt der letzten Aktivität (kann null sein) */
+  last_activity_at: string | null;
+  /** Tägliche Aktivität (letzte 7 Tage) */
+  days: DailyActivity[];
+};
+
+export type DashboardMetrics = {
+  /** Anzahl Fälle nach Status */
+  case_counts: CaseStatusCounts;
+  /** Aktivitätsübersicht */
+  activity: ActivitySummary;
+};
+
+type DashboardResponse = { data: DashboardMetrics };
+
+// --- Dashboard API ---
+
+export const dashboard = {
+  /**
+   * Holt die Dashboard-Metriken für den aktuellen Mandanten.
+   * Alle Werte basieren auf echten Daten. Nullwerte sind valide.
+   */
+  getMetrics: (init?: RequestInit) =>
+    apiRequest<DashboardResponse>("/dashboard", {
+      credentials: "include",
+      ...init
+    }),
+};
 
 // --- Prefill Types ---
 

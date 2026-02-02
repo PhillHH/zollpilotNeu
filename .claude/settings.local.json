@@ -10,7 +10,9 @@
       "Bash(docker-compose logs:*)",
       "Bash(docker ps:*)",
       "Bash(curl:*)",
-      "Bash(docker-compose ps:*)"
+      "Bash(docker-compose ps:*)",
+      "Bash(find:*)",
+      "Bash(docker compose:*)"
     ]
   }
 }

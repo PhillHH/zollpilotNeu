@@ -519,17 +519,50 @@ docker exec zollpilot-api npx prisma migrate deploy
 
 ---
 
-### Session wird nicht gesetzt
+### Session wird nicht gesetzt (Login funktioniert, aber sofort wieder logout)
 
-**Symptom:** Nach Login wird Cookie nicht gesetzt, `/auth/me` gibt 401.
+**Symptom:** Login gibt 200 OK zurück, aber Cookie wird nicht gesetzt. `/auth/me` gibt 401, Redirect zurück zu `/login`.
 
-**Ursachen:**
+**Häufigste Ursache:** Die `.env`-Datei enthält Production-Settings, aber du arbeitest auf localhost.
+
+**Schnellste Lösung:** Erstelle eine `docker-compose.override.yml` im Root:
+
+```yaml
+# docker-compose.override.yml - Lokale Entwicklung
+services:
+  api:
+    environment:
+      SESSION_COOKIE_SECURE: "false"
+      SESSION_COOKIE_DOMAIN: "localhost"
+      WEB_ORIGIN: "http://localhost:1887"
+
+  web:
+    environment:
+      NEXT_PUBLIC_BASE_URL: "http://localhost:1887"
+```
+
+Dann: `docker compose down && docker compose up -d --build`
+
+**Warum passiert das?**
+
+Die `.env` enthält oft Production-Werte wie:
+```
+SESSION_COOKIE_SECURE=true          # Cookie nur über HTTPS → localhost = HTTP = Cookie wird ignoriert
+SESSION_COOKIE_DOMAIN=example.com   # Domain stimmt nicht → Cookie wird nicht gesetzt
+```
+
+Die `docker-compose.override.yml` wird automatisch mit `docker-compose.yml` gemerged und überschreibt diese Werte für die lokale Entwicklung.
+
+**Weitere Ursachen:**
 
 1. **Cross-Origin Issue:** Frontend und API auf unterschiedlichen Ports/Domains.
-   - Lösung: `SESSION_COOKIE_DOMAIN` in `.env` setzen (z.B. `localhost`)
-   
+   - Lösung: `SESSION_COOKIE_DOMAIN` auf `localhost` setzen (oder leer lassen)
+
 2. **Secure Cookie in Dev:** `SESSION_COOKIE_SECURE=true` aber HTTP (nicht HTTPS).
    - Lösung für Dev: `SESSION_COOKIE_SECURE=false`
+
+3. **Port-Mismatch:** `WEB_ORIGIN` muss exakt mit der Frontend-URL übereinstimmen.
+   - Beispiel: Frontend auf `http://localhost:1887` → `WEB_ORIGIN=http://localhost:1887`
 
 ---
 
