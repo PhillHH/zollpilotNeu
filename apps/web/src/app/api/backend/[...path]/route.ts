@@ -5,7 +5,7 @@ const API_BASE_URL =
   "http://localhost:8000";
 
 type RouteContext = {
-  params: { path: string[] };
+  params: Promise<{ path: string[] }>;
 };
 
 /**
@@ -21,7 +21,9 @@ const SKIP_RESPONSE_HEADERS = new Set([
 ]);
 
 async function proxy(request: Request, { params }: RouteContext): Promise<Response> {
-  const targetPath = params.path.join("/");
+  // Next.js 14+: params is now a Promise
+  const resolvedParams = await params;
+  const targetPath = resolvedParams.path.join("/");
   const url = new URL(request.url);
   const upstreamUrl = `${API_BASE_URL}/${targetPath}${url.search}`;
 
@@ -37,14 +39,45 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
-  const upstreamResponse = await fetch(upstreamUrl, {
-    method: request.method,
-    headers,
-    body,
-  });
+  let upstreamResponse: Response;
+  try {
+    upstreamResponse = await fetch(upstreamUrl, {
+      method: request.method,
+      headers,
+      body,
+    });
+  } catch (error) {
+    // Backend not reachable - return a proper error response
+    console.error(`[API Proxy] Failed to reach backend at ${upstreamUrl}:`, error);
+    return NextResponse.json(
+      {
+        error: {
+          code: "BACKEND_UNREACHABLE",
+          message: "Backend service is not reachable. Please try again later.",
+        },
+        requestId: null,
+      },
+      { status: 503 }
+    );
+  }
 
   // Get response body
-  const responseBody = await upstreamResponse.arrayBuffer();
+  let responseBody: ArrayBuffer;
+  try {
+    responseBody = await upstreamResponse.arrayBuffer();
+  } catch (error) {
+    console.error(`[API Proxy] Failed to read response body:`, error);
+    return NextResponse.json(
+      {
+        error: {
+          code: "BACKEND_RESPONSE_ERROR",
+          message: "Failed to read response from backend.",
+        },
+        requestId: null,
+      },
+      { status: 502 }
+    );
+  }
 
   // Create NextResponse
   const response = new NextResponse(responseBody, {
@@ -66,11 +99,20 @@ async function proxy(request: Request, { params }: RouteContext): Promise<Respon
   // This is the ONLY reliable way to forward cookies in Node.js 18+
   // because Set-Cookie is a "forbidden response-header name" that gets
   // special treatment in the Fetch API.
-  const setCookieHeaders = upstreamResponse.headers.getSetCookie();
-  if (setCookieHeaders && setCookieHeaders.length > 0) {
-    for (const cookie of setCookieHeaders) {
-      // Use append() not set() - each Set-Cookie must be a separate header
-      response.headers.append("Set-Cookie", cookie);
+  // Note: getSetCookie() might not exist in all environments, so we check first
+  if (typeof upstreamResponse.headers.getSetCookie === "function") {
+    const setCookieHeaders = upstreamResponse.headers.getSetCookie();
+    if (setCookieHeaders && setCookieHeaders.length > 0) {
+      for (const cookie of setCookieHeaders) {
+        // Use append() not set() - each Set-Cookie must be a separate header
+        response.headers.append("Set-Cookie", cookie);
+      }
+    }
+  } else {
+    // Fallback for older Node.js versions - try to get raw Set-Cookie header
+    const rawSetCookie = upstreamResponse.headers.get("set-cookie");
+    if (rawSetCookie) {
+      response.headers.set("Set-Cookie", rawSetCookie);
     }
   }
 
