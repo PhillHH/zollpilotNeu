@@ -162,7 +162,15 @@ async def submit_case(
     - CASE_NOT_IN_PROCESS: Falscher Case-Status
     - CASE_INVALID: Validierungsfehler bei Pflichtfeldern
     """
-    case = await _get_case_with_fields(case_id, context.tenant["id"])
+    # Defensive tenant_id extraction
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "NO_TENANT", "message": "No tenant found in session."},
+        )
+
+    case = await _get_case_with_fields(case_id, tenant_id)
 
     # Idempotent: if already submitted, return existing state
     if case.status == CaseStatus.SUBMITTED.value:
@@ -234,8 +242,33 @@ async def submit_case(
     if not wizard_progress.is_completed:
         # Prüfe welche Steps noch fehlen
         from app.domain.wizard_steps import get_procedure_steps
-        steps_config = get_procedure_steps(case.procedure.code)
-        completed_steps = wizard_progress.completed_steps if isinstance(wizard_progress.completed_steps, list) else []
+
+        procedure_code = case.procedure.code if case.procedure else None
+        if not procedure_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "NO_PROCEDURE_BOUND",
+                    "message": "Case has no procedure bound.",
+                },
+            )
+
+        steps_config = get_procedure_steps(procedure_code)
+
+        # Safely parse completed_steps from JSON
+        raw_completed = wizard_progress.completed_steps
+        if isinstance(raw_completed, list):
+            completed_steps = raw_completed
+        elif isinstance(raw_completed, str):
+            import json
+            try:
+                completed_steps = json.loads(raw_completed)
+                if not isinstance(completed_steps, list):
+                    completed_steps = []
+            except (json.JSONDecodeError, TypeError):
+                completed_steps = []
+        else:
+            completed_steps = []
 
         if steps_config:
             missing_steps = [
@@ -346,9 +379,16 @@ async def list_snapshots(
     context: AuthContext = Depends(get_current_user),
 ) -> SnapshotListResponse:
     """List all snapshots for a case."""
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "NO_TENANT", "message": "No tenant found in session."},
+        )
+
     # Verify case access
     case = await prisma.case.find_first(
-        where={"id": case_id, "tenant_id": context.tenant["id"]}
+        where={"id": case_id, "tenant_id": tenant_id}
     )
     if not case:
         raise HTTPException(
@@ -380,9 +420,16 @@ async def get_snapshot(
     context: AuthContext = Depends(get_current_user),
 ) -> SnapshotDetailResponse:
     """Get a specific snapshot by version."""
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "NO_TENANT", "message": "No tenant found in session."},
+        )
+
     # Verify case access
     case = await prisma.case.find_first(
-        where={"id": case_id, "tenant_id": context.tenant["id"]}
+        where={"id": case_id, "tenant_id": tenant_id}
     )
     if not case:
         raise HTTPException(
@@ -420,11 +467,18 @@ async def get_case_summary(
 ) -> CaseSummaryResponse:
     """
     Get structured summary for a case.
-    
+
     Returns formatted, human-readable data organized into sections.
     Values are properly formatted (currency, country names, etc.).
     """
-    case = await _get_case_with_fields(case_id, context.tenant["id"])
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "NO_TENANT", "message": "No tenant found in session."},
+        )
+
+    case = await _get_case_with_fields(case_id, tenant_id)
 
     # Check if procedure is bound
     if not case.procedure_id or not case.procedure:

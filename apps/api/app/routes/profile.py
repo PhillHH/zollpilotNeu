@@ -86,13 +86,47 @@ async def get_profile(
     Returns profile data including personal info, default sender/recipient,
     and preferred countries/currencies for form pre-filling.
     """
-    user_id = context.user["id"]
-    email = context.user["email"]
+    user_id = context.user.get("id") if context.user else None
+    email = context.user.get("email", "") if context.user else ""
+
+    if not user_id:
+        # Should not happen with proper auth, but return empty profile
+        return ProfileResponse(
+            data=ProfileResponse.ProfileResponseData(
+                user_id="",
+                email="",
+            )
+        )
 
     # Try to get existing profile
     profile = await prisma.userprofile.find_unique(where={"user_id": user_id})
 
     if profile:
+        # Safely convert JSON fields to lists
+        preferred_countries = None
+        preferred_currencies = None
+
+        if profile.preferred_countries is not None:
+            if isinstance(profile.preferred_countries, list):
+                preferred_countries = profile.preferred_countries
+            elif isinstance(profile.preferred_countries, str):
+                # Handle case where it might be stored as JSON string
+                import json
+                try:
+                    preferred_countries = json.loads(profile.preferred_countries)
+                except (json.JSONDecodeError, TypeError):
+                    preferred_countries = None
+
+        if profile.preferred_currencies is not None:
+            if isinstance(profile.preferred_currencies, list):
+                preferred_currencies = profile.preferred_currencies
+            elif isinstance(profile.preferred_currencies, str):
+                import json
+                try:
+                    preferred_currencies = json.loads(profile.preferred_currencies)
+                except (json.JSONDecodeError, TypeError):
+                    preferred_currencies = None
+
         return ProfileResponse(
             data=ProfileResponse.ProfileResponseData(
                 user_id=user_id,
@@ -103,8 +137,8 @@ async def get_profile(
                 default_sender_country=profile.default_sender_country,
                 default_recipient_name=profile.default_recipient_name,
                 default_recipient_country=profile.default_recipient_country,
-                preferred_countries=profile.preferred_countries,
-                preferred_currencies=profile.preferred_currencies,
+                preferred_countries=preferred_countries,
+                preferred_currencies=preferred_currencies,
                 updated_at=profile.updated_at,
             )
         )
