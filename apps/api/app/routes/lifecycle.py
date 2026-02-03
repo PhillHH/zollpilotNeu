@@ -343,6 +343,31 @@ async def submit_case(
     # Timestamp für Submit
     submitted_at = datetime.now(timezone.utc)
 
+    # Check if snapshot already exists (idempotency for retries)
+    existing_snapshot = await prisma.casesnapshot.find_first(
+        where={"case_id": case_id, "version": case.version}
+    )
+
+    if existing_snapshot:
+        # Snapshot exists, just update case status and return
+        await prisma.case.update(
+            where={"id": case_id},
+            data={
+                "status": "SUBMITTED",
+                "submitted_at": submitted_at,
+            },
+        )
+        return SubmitResponse(
+            data=SubmitResultData(
+                case_id=case_id,
+                status="SUBMITTED",
+                procedure_code=procedure_code,
+                submitted_at=submitted_at,
+                version=case.version,
+                snapshot_id=existing_snapshot.id,
+            )
+        )
+
     # Create snapshot - use extracted values to avoid None issues
     try:
         snapshot = await prisma.casesnapshot.create(
@@ -356,16 +381,23 @@ async def submit_case(
             }
         )
     except Exception as e:
-        # Log and re-raise with more context
-        import logging
-        logging.error(f"Failed to create snapshot for case {case_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "code": "SNAPSHOT_CREATION_FAILED",
-                "message": f"Failed to create snapshot: {str(e)}",
-            },
+        # Could be unique constraint violation from race condition
+        # Try to find existing snapshot
+        existing = await prisma.casesnapshot.find_first(
+            where={"case_id": case_id, "version": case.version}
         )
+        if existing:
+            snapshot = existing
+        else:
+            import logging
+            logging.error(f"Failed to create snapshot for case {case_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "SNAPSHOT_CREATION_FAILED",
+                    "message": f"Failed to create snapshot: {str(e)}",
+                },
+            )
 
     # Update case status atomically
     await prisma.case.update(
