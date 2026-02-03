@@ -138,7 +138,26 @@ async def get_dashboard_metrics(
     Returns:
         DashboardResponse: Fachlich korrekte Prozess- und Statusmetriken
     """
-    tenant_id = context.tenant["id"]
+    # Defensive: context.tenant might be None or missing "id"
+    tenant_id = context.tenant.get("id") if context.tenant else None
+
+    if not tenant_id:
+        # Return empty metrics if no tenant (shouldn't happen with proper auth, but safety first)
+        return DashboardResponse(
+            data=DashboardMetrics(
+                case_counts=CaseStatusCounts(
+                    drafts=0,
+                    in_process=0,
+                    submitted=0,
+                    archived=0,
+                    total=0,
+                ),
+                activity=ActivitySummary(
+                    last_activity_at=None,
+                    days=[],
+                ),
+            )
+        )
 
     # Status-Aggregationen parallel ausführen
     drafts_count, in_process_count, submitted_count, archived_count = await _count_cases_by_status(tenant_id)
