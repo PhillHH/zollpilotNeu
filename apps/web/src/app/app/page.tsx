@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Activity, CheckCircle, FileText, Clock } from 'lucide-react';
-import { dashboard, cases, DashboardMetrics, CaseSummary } from "../lib/api/client";
+import { Activity, CheckCircle, FileText, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
+import { dashboard, cases, DashboardMetrics, CaseSummary, ApiError } from "../lib/api/client";
 import {
   DashboardGrid,
   SectionHeader,
@@ -24,23 +24,48 @@ export default function AppDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [recentCases, setRecentCases] = useState<CaseSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; code?: string; requestId?: string | null } | null>(null);
 
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [dashboardRes, casesRes] = await Promise.all([
-        dashboard.getMetrics(),
-        cases.list("active"),
-      ]);
+      // Load cases first - this is less likely to fail
+      let casesData: CaseSummary[] = [];
+      try {
+        const casesRes = await cases.list("active");
+        casesData = casesRes.data.slice(0, 5);
+      } catch (casesErr) {
+        console.error("[Dashboard] Failed to load cases:", casesErr);
+        // Continue without cases
+      }
 
-      setMetrics(dashboardRes.data);
-      setRecentCases(casesRes.data.slice(0, 5)); // Nur die 5 neuesten
+      // Load dashboard metrics
+      try {
+        const dashboardRes = await dashboard.getMetrics();
+        setMetrics(dashboardRes.data);
+      } catch (dashErr) {
+        const apiError = dashErr as ApiError;
+        console.error("[Dashboard] Failed to load metrics:", apiError);
+
+        // Set partial error - we still show cases if available
+        setError({
+          message: apiError.message || "Dashboard-Metriken konnten nicht geladen werden.",
+          code: apiError.code,
+          requestId: apiError.requestId,
+        });
+      }
+
+      setRecentCases(casesData);
     } catch (err) {
-      console.error("[Dashboard] Failed to load data:", err);
-      setError("Daten konnten nicht geladen werden.");
+      const apiError = err as ApiError;
+      console.error("[Dashboard] Failed to load data:", apiError);
+      setError({
+        message: apiError.message || "Daten konnten nicht geladen werden.",
+        code: apiError.code,
+        requestId: apiError.requestId,
+      });
     } finally {
       setLoading(false);
     }
@@ -62,13 +87,36 @@ export default function AppDashboard() {
     );
   }
 
-  // Error state
-  if (error) {
+  // Error state - but still show partial data if available
+  if (error && !metrics && recentCases.length === 0) {
     return (
       <div className="flex flex-col gap-8 w-full max-w-[1400px] mx-auto pb-12">
         <SectionHeader title="Übersicht" />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-red-500 text-sm">{error}</div>
+        <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-lg p-6 flex flex-col items-center justify-center">
+          <AlertTriangle className="w-12 h-12 text-[#DC2626] mb-4" />
+          <h3 className="text-[17px] font-semibold text-[#1A1D1F] mb-2">
+            Fehler beim Laden
+          </h3>
+          <p className="text-[15px] text-[#6F767E] text-center mb-2">
+            {error.message}
+          </p>
+          {error.code && (
+            <p className="text-[13px] text-[#9CA3AF] mb-1">
+              Fehlercode: {error.code}
+            </p>
+          )}
+          {error.requestId && (
+            <p className="text-[13px] text-[#9CA3AF] mb-4">
+              Request-ID: {error.requestId}
+            </p>
+          )}
+          <button
+            onClick={loadDashboardData}
+            className="flex items-center gap-2 px-4 py-2 bg-[#2A85FF] text-white rounded-lg text-[15px] font-semibold hover:bg-[#1A75EF] transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Erneut versuchen
+          </button>
         </div>
       </div>
     );
@@ -85,12 +133,36 @@ export default function AppDashboard() {
         action={
           <button
             onClick={loadDashboardData}
-            className="text-xs text-[#6F767E] hover:text-[#1A1D1F] px-3 py-1.5 rounded-lg border border-[#EFEFEF] hover:bg-gray-50 transition-colors"
+            className="text-xs text-[#6F767E] hover:text-[#1A1D1F] px-3 py-1.5 rounded-lg border border-[#EFEFEF] hover:bg-gray-50 transition-colors flex items-center gap-2"
           >
+            <RefreshCw className="w-3 h-3" />
             Aktualisieren
           </button>
         }
       />
+
+      {/* Partial Error Banner - shown when metrics failed but cases loaded */}
+      {error && (recentCases.length > 0 || metrics) && (
+        <div className="bg-[#FEF3C7] border border-[#FCD34D] rounded-lg p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-[#D97706] flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-[14px] text-[#92400E]">
+              {error.message}
+              {error.requestId && (
+                <span className="text-[12px] text-[#B45309] ml-2">
+                  (Request-ID: {error.requestId})
+                </span>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={loadDashboardData}
+            className="text-[13px] text-[#D97706] hover:text-[#B45309] font-semibold"
+          >
+            Erneut laden
+          </button>
+        </div>
+      )}
 
       {/* Metrics Cards */}
       <DashboardGrid columns={3}>
