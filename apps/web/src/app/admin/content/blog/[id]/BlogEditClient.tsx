@@ -14,6 +14,7 @@ import {
   BlogPostUpdatePayload,
   ApiError,
 } from "../../../../lib/api/client";
+import { HtmlEditor } from "../../../../components/HtmlEditor";
 
 type BlogEditClientProps = {
   postId: string;
@@ -237,17 +238,15 @@ export function BlogEditClient({ postId }: BlogEditClientProps) {
 
             <div className="form-group">
               <label htmlFor="content" className="form-label">
-                Inhalt (MDX) *
+                Inhalt *
               </label>
-              <textarea
-                id="content"
-                className="form-textarea content-textarea"
+              <HtmlEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                required
-                rows={20}
+                onChange={setContent}
+                height={500}
+                placeholder="Schreibe hier deinen Artikel..."
               />
-              <p className="form-hint">Markdown mit MDX-Unterstützung</p>
+              <p className="form-hint">WYSIWYG-Editor mit Bild- und Video-Unterstützung</p>
             </div>
           </div>
         </Card>

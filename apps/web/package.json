@@ -5,15 +5,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p 1887 -H 0.0.0.0",
-    "test": "vitest"
+    "test": "vitest",
+    "postinstall": "node scripts/copy-tinymce.js"
   },
   "dependencies": {
+    "@tinymce/tinymce-react": "^6.3.0",
     "gray-matter": "4.0.3",
     "lucide-react": "^0.563.0",
     "next": "14.2.22",
     "next-mdx-remote": "5.0.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "tinymce": "^8.3.2"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "6.5.0",

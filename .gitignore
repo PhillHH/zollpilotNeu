@@ -12,3 +12,4 @@ tmp/
 packages/shared/dist/
 
 apps/web/tsconfig.tsbuildinfo
+apps/web/public/tinymce/

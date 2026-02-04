@@ -15,6 +15,7 @@ import {
   AdminBlogPostListItem,
   ApiError,
 } from "../../../../lib/api/client";
+import { HtmlEditor } from "../../../../components/HtmlEditor";
 
 type FaqEditClientProps = {
   entryId: string;
@@ -214,17 +215,15 @@ export function FaqEditClient({ entryId }: FaqEditClientProps) {
 
             <div className="form-group">
               <label htmlFor="answer" className="form-label">
-                Antwort (MDX) *
+                Antwort *
               </label>
-              <textarea
-                id="answer"
-                className="form-textarea content-textarea"
+              <HtmlEditor
                 value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                required
-                rows={10}
+                onChange={setAnswer}
+                height={300}
+                placeholder="Schreibe hier die Antwort..."
               />
-              <p className="form-hint">Markdown mit MDX-Unterstützung</p>
+              <p className="form-hint">WYSIWYG-Editor mit Bild- und Video-Unterstützung</p>
             </div>
           </div>
         </Card>
