@@ -28,10 +28,14 @@ CREATE TABLE IF NOT EXISTS "UserProfile" (
     CONSTRAINT "UserProfile_pkey" PRIMARY KEY ("user_id")
 );
 
--- AddForeignKey UserProfile
-ALTER TABLE "UserProfile"
-    ADD CONSTRAINT "UserProfile_user_id_fkey"
-    FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey UserProfile (with IF NOT EXISTS pattern)
+DO $$ BEGIN
+    ALTER TABLE "UserProfile"
+        ADD CONSTRAINT "UserProfile_user_id_fkey"
+        FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateTable BlogPost (id is UUID, user references are UUID)
 CREATE TABLE IF NOT EXISTS "BlogPost" (
@@ -121,29 +125,53 @@ CREATE INDEX IF NOT EXISTS "KnowledgeEntry_status_idx" ON "KnowledgeEntry"("stat
 CREATE INDEX IF NOT EXISTS "KnowledgeEntry_applies_to_idx" ON "KnowledgeEntry"("applies_to");
 CREATE INDEX IF NOT EXISTS "KnowledgeEntry_topic_id_idx" ON "KnowledgeEntry"("topic_id");
 
--- AddForeignKey BlogPost
-ALTER TABLE "BlogPost"
-    ADD CONSTRAINT "BlogPost_created_by_user_id_fkey"
-    FOREIGN KEY ("created_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey BlogPost (with IF NOT EXISTS pattern)
+DO $$ BEGIN
+    ALTER TABLE "BlogPost"
+        ADD CONSTRAINT "BlogPost_created_by_user_id_fkey"
+        FOREIGN KEY ("created_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "BlogPost"
-    ADD CONSTRAINT "BlogPost_updated_by_user_id_fkey"
-    FOREIGN KEY ("updated_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "BlogPost"
+        ADD CONSTRAINT "BlogPost_updated_by_user_id_fkey"
+        FOREIGN KEY ("updated_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey FaqEntry
-ALTER TABLE "FaqEntry"
-    ADD CONSTRAINT "FaqEntry_related_blog_post_id_fkey"
-    FOREIGN KEY ("related_blog_post_id") REFERENCES "BlogPost"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey FaqEntry (with IF NOT EXISTS pattern)
+DO $$ BEGIN
+    ALTER TABLE "FaqEntry"
+        ADD CONSTRAINT "FaqEntry_related_blog_post_id_fkey"
+        FOREIGN KEY ("related_blog_post_id") REFERENCES "BlogPost"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "FaqEntry"
-    ADD CONSTRAINT "FaqEntry_created_by_user_id_fkey"
-    FOREIGN KEY ("created_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "FaqEntry"
+        ADD CONSTRAINT "FaqEntry_created_by_user_id_fkey"
+        FOREIGN KEY ("created_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "FaqEntry"
-    ADD CONSTRAINT "FaqEntry_updated_by_user_id_fkey"
-    FOREIGN KEY ("updated_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "FaqEntry"
+        ADD CONSTRAINT "FaqEntry_updated_by_user_id_fkey"
+        FOREIGN KEY ("updated_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AddForeignKey KnowledgeEntry
-ALTER TABLE "KnowledgeEntry"
-    ADD CONSTRAINT "KnowledgeEntry_topic_id_fkey"
-    FOREIGN KEY ("topic_id") REFERENCES "KnowledgeTopic"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey KnowledgeEntry (with IF NOT EXISTS pattern)
+DO $$ BEGIN
+    ALTER TABLE "KnowledgeEntry"
+        ADD CONSTRAINT "KnowledgeEntry_topic_id_fkey"
+        FOREIGN KEY ("topic_id") REFERENCES "KnowledgeTopic"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
