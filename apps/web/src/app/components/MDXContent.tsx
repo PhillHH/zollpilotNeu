@@ -44,6 +44,15 @@ const components = {
 };
 
 export function MDXContent({ source }: MDXContentProps) {
+  // Handle empty or missing content gracefully
+  if (!source || source.trim() === "") {
+    return (
+      <div className="mdx-content">
+        <p className="text-gray-500 italic">Kein Inhalt verfügbar.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mdx-content">
       <MDXRemote source={source} components={components} />
