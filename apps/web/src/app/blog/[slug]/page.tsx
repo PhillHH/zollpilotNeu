@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { content, BlogPostDetail } from "../../lib/api/client";
 import { PublicLayout } from "../../components/PublicLayout";
 import { BlogPostClient } from "./BlogPostClient";
-import { MDXContent } from "../../components/MDXContent";
+import { SafeMarkdownContent } from "../../components/SafeMarkdownContent";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -56,7 +56,7 @@ export default async function BlogPostPage({ params }: Props) {
   return (
     <PublicLayout>
       <BlogPostClient post={post}>
-        <MDXContent source={post.content} />
+        <SafeMarkdownContent source={post.content} />
       </BlogPostClient>
     </PublicLayout>
   );
