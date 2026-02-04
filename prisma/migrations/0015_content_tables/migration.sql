@@ -12,9 +12,9 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
--- CreateTable UserProfile
+-- CreateTable UserProfile (user_id is UUID to match User.id)
 CREATE TABLE IF NOT EXISTS "UserProfile" (
-    "user_id" TEXT NOT NULL,
+    "user_id" UUID NOT NULL,
     "name" TEXT,
     "address" TEXT,
     "default_sender_name" TEXT,
@@ -30,15 +30,12 @@ CREATE TABLE IF NOT EXISTS "UserProfile" (
 
 -- AddForeignKey UserProfile
 ALTER TABLE "UserProfile"
-    DROP CONSTRAINT IF EXISTS "UserProfile_user_id_fkey";
-
-ALTER TABLE "UserProfile"
     ADD CONSTRAINT "UserProfile_user_id_fkey"
     FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- CreateTable BlogPost
+-- CreateTable BlogPost (id is UUID, user references are UUID)
 CREATE TABLE IF NOT EXISTS "BlogPost" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "title" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "excerpt" TEXT NOT NULL,
@@ -49,15 +46,15 @@ CREATE TABLE IF NOT EXISTS "BlogPost" (
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "meta_title" TEXT,
     "meta_description" TEXT,
-    "created_by_user_id" TEXT,
-    "updated_by_user_id" TEXT,
+    "created_by_user_id" UUID,
+    "updated_by_user_id" UUID,
 
     CONSTRAINT "BlogPost_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable FaqEntry
 CREATE TABLE IF NOT EXISTS "FaqEntry" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "question" TEXT NOT NULL,
     "answer" TEXT NOT NULL,
     "category" TEXT NOT NULL DEFAULT 'Allgemein',
@@ -66,16 +63,16 @@ CREATE TABLE IF NOT EXISTS "FaqEntry" (
     "published_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "related_blog_post_id" TEXT,
-    "created_by_user_id" TEXT,
-    "updated_by_user_id" TEXT,
+    "related_blog_post_id" UUID,
+    "created_by_user_id" UUID,
+    "updated_by_user_id" UUID,
 
     CONSTRAINT "FaqEntry_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable KnowledgeTopic
 CREATE TABLE IF NOT EXISTS "KnowledgeTopic" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -88,7 +85,7 @@ CREATE TABLE IF NOT EXISTS "KnowledgeTopic" (
 
 -- CreateTable KnowledgeEntry
 CREATE TABLE IF NOT EXISTS "KnowledgeEntry" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "title" TEXT NOT NULL,
     "summary" TEXT NOT NULL,
     "explanation" TEXT NOT NULL,
@@ -98,7 +95,7 @@ CREATE TABLE IF NOT EXISTS "KnowledgeEntry" (
     "status" "ContentStatus" NOT NULL DEFAULT 'DRAFT',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "topic_id" TEXT,
+    "topic_id" UUID,
 
     CONSTRAINT "KnowledgeEntry_pkey" PRIMARY KEY ("id")
 );
@@ -126,10 +123,6 @@ CREATE INDEX IF NOT EXISTS "KnowledgeEntry_topic_id_idx" ON "KnowledgeEntry"("to
 
 -- AddForeignKey BlogPost
 ALTER TABLE "BlogPost"
-    DROP CONSTRAINT IF EXISTS "BlogPost_created_by_user_id_fkey",
-    DROP CONSTRAINT IF EXISTS "BlogPost_updated_by_user_id_fkey";
-
-ALTER TABLE "BlogPost"
     ADD CONSTRAINT "BlogPost_created_by_user_id_fkey"
     FOREIGN KEY ("created_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -138,11 +131,6 @@ ALTER TABLE "BlogPost"
     FOREIGN KEY ("updated_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey FaqEntry
-ALTER TABLE "FaqEntry"
-    DROP CONSTRAINT IF EXISTS "FaqEntry_related_blog_post_id_fkey",
-    DROP CONSTRAINT IF EXISTS "FaqEntry_created_by_user_id_fkey",
-    DROP CONSTRAINT IF EXISTS "FaqEntry_updated_by_user_id_fkey";
-
 ALTER TABLE "FaqEntry"
     ADD CONSTRAINT "FaqEntry_related_blog_post_id_fkey"
     FOREIGN KEY ("related_blog_post_id") REFERENCES "BlogPost"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -156,9 +144,6 @@ ALTER TABLE "FaqEntry"
     FOREIGN KEY ("updated_by_user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey KnowledgeEntry
-ALTER TABLE "KnowledgeEntry"
-    DROP CONSTRAINT IF EXISTS "KnowledgeEntry_topic_id_fkey";
-
 ALTER TABLE "KnowledgeEntry"
     ADD CONSTRAINT "KnowledgeEntry_topic_id_fkey"
     FOREIGN KEY ("topic_id") REFERENCES "KnowledgeTopic"("id") ON DELETE SET NULL ON UPDATE CASCADE;
