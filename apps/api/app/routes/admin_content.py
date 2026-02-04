@@ -6,6 +6,7 @@ Requires EDITOR role or higher (EDITOR, ADMIN, OWNER, SYSTEM_ADMIN).
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime
 from typing import Any
@@ -16,6 +17,8 @@ from pydantic import BaseModel, field_validator
 from app.core.rbac import Role
 from app.dependencies.auth import AuthContext, require_role
 from app.db.prisma_client import prisma
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/admin/content", tags=["admin-content"])
@@ -333,10 +336,17 @@ async def list_blog_posts(
     if status_filter:
         where["status"] = status_filter
 
-    posts = await prisma.blogpost.find_many(
-        where=where if where else None,
-        order={"created_at": "desc"},
-    )
+    try:
+        posts = await prisma.blogpost.find_many(
+            where=where if where else None,
+            order={"created_at": "desc"},
+        )
+    except Exception as e:
+        logger.exception(f"Error fetching blog posts: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "BLOG_FETCH_ERROR", "message": f"Failed to fetch blog posts: {str(e)}"},
+        )
 
     return BlogPostListResponse(
         data=[

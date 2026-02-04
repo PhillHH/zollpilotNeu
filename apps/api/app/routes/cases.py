@@ -164,7 +164,7 @@ async def list_cases(
     where: dict[str, Any] = {"tenant_id": context.tenant["id"]}
 
     if status_filter == StatusFilter.ACTIVE:
-        where["status"] = {"in": ["DRAFT", "SUBMITTED"]}
+        where["status"] = {"in": ["DRAFT", "IN_PROCESS", "SUBMITTED"]}
     elif status_filter == StatusFilter.ARCHIVED:
         where["status"] = "ARCHIVED"
     # ALL: no status filter
