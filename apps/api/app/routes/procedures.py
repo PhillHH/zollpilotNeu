@@ -10,6 +10,7 @@ Provides:
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -18,6 +19,8 @@ from pydantic import BaseModel
 
 from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
+
+logger = logging.getLogger(__name__)
 from app.domain.procedures import (
     FieldDefinition,
     ProcedureDefinition,
@@ -217,7 +220,23 @@ async def bind_procedure(
     - CASE_NOT_EDITABLE: Status nicht DRAFT oder IN_PROCESS
     - CASE_ALREADY_SUBMITTED: Verfahren bereits eingereicht
     """
-    case = await _get_case_or_404(case_id, context.tenant["id"])
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "NO_TENANT", "message": "No tenant found in session."},
+        )
+
+    try:
+        case = await _get_case_or_404(case_id, tenant_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error fetching case {case_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "DATABASE_ERROR", "message": f"Failed to fetch case: {str(e)}"},
+        )
     current_status = case.get("status", "")
     current_procedure_id = case.get("procedure_id")
 
@@ -308,10 +327,17 @@ async def bind_procedure(
     # Bestehende CaseFields werden NICHT gelöscht (bewusste Entscheidung)
     # Begründung: Viele Felder sind verfahrensübergreifend nutzbar
 
-    updated_case = await prisma.case.update(
-        where={"id": case_id},
-        data=update_data,
-    )
+    try:
+        updated_case = await prisma.case.update(
+            where={"id": case_id},
+            data=update_data,
+        )
+    except Exception as e:
+        logger.exception(f"Error binding procedure to case {case_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "PROCEDURE_BIND_ERROR", "message": f"Failed to bind procedure: {str(e)}"},
+        )
 
     return BindProcedureResponse(
         data={
@@ -331,13 +357,27 @@ async def validate_case(
 ) -> ValidateCaseResponse:
     """
     Validate a case's fields against its bound procedure.
-    
+
     Returns validation result with any errors.
     """
-    case = await prisma.case.find_first(
-        where={"id": case_id, "tenant_id": context.tenant["id"]},
-        include={"fields": True},
-    )
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "NO_TENANT", "message": "No tenant found in session."},
+        )
+
+    try:
+        case = await prisma.case.find_first(
+            where={"id": case_id, "tenant_id": tenant_id},
+            include={"fields": True},
+        )
+    except Exception as e:
+        logger.exception(f"Error fetching case {case_id} for validation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "DATABASE_ERROR", "message": f"Failed to fetch case: {str(e)}"},
+        )
 
     if not case:
         raise HTTPException(

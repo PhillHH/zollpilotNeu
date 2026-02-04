@@ -11,14 +11,17 @@ Alle Kennzahlen bilden ausschließlich Systemzustände ab.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -159,30 +162,40 @@ async def get_dashboard_metrics(
             )
         )
 
-    # Status-Aggregationen parallel ausführen
-    drafts_count, in_process_count, submitted_count, archived_count = await _count_cases_by_status(tenant_id)
+    try:
+        # Status-Aggregationen parallel ausführen
+        drafts_count, in_process_count, submitted_count, archived_count = await _count_cases_by_status(tenant_id)
 
-    # Aktivitätsdaten
-    last_activity = await _get_last_activity(tenant_id)
-    daily_activity = await _get_daily_activity(tenant_id, days=7)
+        # Aktivitätsdaten
+        last_activity = await _get_last_activity(tenant_id)
+        daily_activity = await _get_daily_activity(tenant_id, days=7)
 
-    total = drafts_count + in_process_count + submitted_count + archived_count
+        total = drafts_count + in_process_count + submitted_count + archived_count
 
-    return DashboardResponse(
-        data=DashboardMetrics(
-            case_counts=CaseStatusCounts(
-                drafts=drafts_count,
-                in_process=in_process_count,
-                submitted=submitted_count,
-                archived=archived_count,
-                total=total,
-            ),
-            activity=ActivitySummary(
-                last_activity_at=last_activity,
-                days=daily_activity,
-            ),
+        return DashboardResponse(
+            data=DashboardMetrics(
+                case_counts=CaseStatusCounts(
+                    drafts=drafts_count,
+                    in_process=in_process_count,
+                    submitted=submitted_count,
+                    archived=archived_count,
+                    total=total,
+                ),
+                activity=ActivitySummary(
+                    last_activity_at=last_activity,
+                    days=daily_activity,
+                ),
+            )
         )
-    )
+    except Exception as e:
+        logger.exception(f"Error fetching dashboard metrics for tenant {tenant_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "DASHBOARD_METRICS_ERROR",
+                "message": f"Failed to load dashboard metrics: {str(e)}",
+            },
+        )
 
 
 # =============================================================================

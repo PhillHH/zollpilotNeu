@@ -5,14 +5,17 @@ Endpoints for managing user profile data.
 Profile data is used for pre-filling forms in the wizard.
 """
 
+import logging
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.dependencies.auth import AuthContext, get_current_user
 from app.db.prisma_client import prisma
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -99,7 +102,17 @@ async def get_profile(
         )
 
     # Try to get existing profile
-    profile = await prisma.userprofile.find_unique(where={"user_id": user_id})
+    try:
+        profile = await prisma.userprofile.find_unique(where={"user_id": user_id})
+    except Exception as e:
+        logger.exception(f"Error fetching profile for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "PROFILE_FETCH_ERROR",
+                "message": f"Failed to load profile: {str(e)}",
+            },
+        )
 
     if profile:
         # Safely convert JSON fields to lists
@@ -163,8 +176,14 @@ async def update_profile(
     Creates the profile if it doesn't exist (upsert).
     All fields are optional - only provided fields are updated.
     """
-    user_id = context.user["id"]
-    email = context.user["email"]
+    user_id = context.user.get("id") if context.user else None
+    email = context.user.get("email", "") if context.user else ""
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "NO_USER", "message": "No user found in session."},
+        )
 
     # Build update data (only non-None fields)
     update_data = {}
@@ -188,13 +207,23 @@ async def update_profile(
         update_data["preferred_currencies"] = payload.preferred_currencies or None
 
     # Upsert profile
-    profile = await prisma.userprofile.upsert(
-        where={"user_id": user_id},
-        data={
-            "create": {"user_id": user_id, **update_data},
-            "update": update_data,
-        },
-    )
+    try:
+        profile = await prisma.userprofile.upsert(
+            where={"user_id": user_id},
+            data={
+                "create": {"user_id": user_id, **update_data},
+                "update": update_data,
+            },
+        )
+    except Exception as e:
+        logger.exception(f"Error updating profile for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "PROFILE_UPDATE_ERROR",
+                "message": f"Failed to update profile: {str(e)}",
+            },
+        )
 
     return ProfileResponse(
         data=ProfileResponse.ProfileResponseData(

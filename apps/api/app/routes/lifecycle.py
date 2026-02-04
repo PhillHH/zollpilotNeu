@@ -15,6 +15,7 @@ WICHTIG zur Abgabe (Submit):
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -27,6 +28,8 @@ from app.domain.procedures import procedure_loader, validate_case_fields
 from app.domain.summary import generate_case_summary, SummaryItem, SummarySection
 from app.domain.case_status import can_submit, CaseStatus
 from app.core.json import normalize_to_json
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/cases", tags=["case-lifecycle"])
@@ -532,7 +535,16 @@ async def get_case_summary(
             detail={"code": "NO_TENANT", "message": "No tenant found in session."},
         )
 
-    case = await _get_case_with_fields(case_id, tenant_id)
+    try:
+        case = await _get_case_with_fields(case_id, tenant_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error fetching case {case_id} for summary: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "DATABASE_ERROR", "message": f"Failed to fetch case: {str(e)}"},
+        )
 
     # Check if procedure is bound
     if not case.procedure_id or not case.procedure:
@@ -550,12 +562,19 @@ async def get_case_summary(
         fields_dict[field.key] = field.value_json
 
     # Generate summary
-    summary = generate_case_summary(
-        procedure_code=case.procedure.code,
-        procedure_version=case.procedure.version,
-        procedure_name=case.procedure.name,
-        fields=fields_dict
-    )
+    try:
+        summary = generate_case_summary(
+            procedure_code=case.procedure.code,
+            procedure_version=case.procedure.version,
+            procedure_name=case.procedure.name,
+            fields=fields_dict
+        )
+    except Exception as e:
+        logger.exception(f"Error generating summary for case {case_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "SUMMARY_ERROR", "message": f"Failed to generate summary: {str(e)}"},
+        )
 
     return CaseSummaryResponse(
         data=CaseSummaryData(
