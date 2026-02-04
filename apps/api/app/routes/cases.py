@@ -145,15 +145,36 @@ async def _get_case_or_404(
 async def create_case(
     payload: CaseCreateRequest, context: AuthContext = Depends(get_current_user)
 ) -> CaseSummaryResponse:
-    case = await prisma.case.create(
-        data={
-            "tenant_id": context.tenant["id"],
-            "created_by_user_id": context.user["id"],
-            "title": payload.title or "Untitled",
-            "status": "DRAFT",
-        }
-    )
-    return CaseSummaryResponse(data=CaseSummary(**case.model_dump()))
+    # Defensive: ensure tenant and user exist
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    user_id = context.user.get("id") if context.user else None
+
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "NO_TENANT", "message": "No tenant context available."},
+        )
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "NO_USER", "message": "No user context available."},
+        )
+
+    try:
+        case = await prisma.case.create(
+            data={
+                "tenant_id": tenant_id,
+                "created_by_user_id": user_id,
+                "title": payload.title or "Untitled",
+                "status": "DRAFT",
+            }
+        )
+        return CaseSummaryResponse(data=CaseSummary(**case.model_dump()))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "CASE_CREATE_ERROR", "message": f"Failed to create case: {str(e)}"},
+        )
 
 
 @router.get("", response_model=CaseListResponse)
@@ -161,7 +182,15 @@ async def list_cases(
     context: AuthContext = Depends(get_current_user),
     status_filter: StatusFilter = Query(default=StatusFilter.ACTIVE, alias="status"),
 ) -> CaseListResponse:
-    where: dict[str, Any] = {"tenant_id": context.tenant["id"]}
+    # Defensive: ensure tenant exists
+    tenant_id = context.tenant.get("id") if context.tenant else None
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "NO_TENANT", "message": "No tenant context available."},
+        )
+
+    where: dict[str, Any] = {"tenant_id": tenant_id}
 
     if status_filter == StatusFilter.ACTIVE:
         where["status"] = {"in": ["DRAFT", "IN_PROCESS", "SUBMITTED"]}
@@ -169,11 +198,45 @@ async def list_cases(
         where["status"] = "ARCHIVED"
     # ALL: no status filter
 
-    cases = await prisma.case.find_many(
-        where=where,
-        order={"created_at": "desc"},
+    try:
+        cases = await prisma.case.find_many(
+            where=where,
+            order={"created_at": "desc"},
+        )
+        return CaseListResponse(data=[CaseSummary(**case.model_dump()) for case in cases])
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "CASES_FETCH_ERROR", "message": f"Failed to fetch cases: {str(e)}"},
+        )
+
+
+@router.get("/new", response_model=CaseDetailResponse)
+async def get_new_case_template(
+    context: AuthContext = Depends(get_current_user),
+) -> CaseDetailResponse:
+    """
+    Returns a template for a new case (not saved to DB).
+    Used by the frontend to initialize the case creation form.
+    """
+    # Return a template response with empty/default values
+    from datetime import datetime
+    now = datetime.utcnow()
+
+    return CaseDetailResponse(
+        data=CaseDetail(
+            id="",  # Empty - will be generated on create
+            title="",
+            status="DRAFT",
+            version=0,
+            created_at=now,
+            updated_at=now,
+            submitted_at=None,
+            archived_at=None,
+            procedure=None,
+            fields=[],
+        )
     )
-    return CaseListResponse(data=[CaseSummary(**case.model_dump()) for case in cases])
 
 
 @router.get("/{case_id}", response_model=CaseDetailResponse)

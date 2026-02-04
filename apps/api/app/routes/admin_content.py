@@ -404,49 +404,66 @@ async def create_blog_post(
     context: AuthContext = Depends(get_content_editor_context),
 ) -> BlogPostSingleResponse:
     """Create a new blog post."""
-    # Check slug uniqueness
-    existing = await prisma.blogpost.find_unique(where={"slug": payload.slug})
-    if existing:
+    # Defensive: ensure user context exists
+    user_id = context.user.get("id") if context.user else None
+    if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "SLUG_EXISTS", "message": "A blog post with this slug already exists."},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "NO_USER", "message": "No user context available."},
         )
 
-    # Set published_at if status is PUBLISHED
-    published_at = datetime.utcnow() if payload.status == "PUBLISHED" else None
+    try:
+        # Check slug uniqueness
+        existing = await prisma.blogpost.find_unique(where={"slug": payload.slug})
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "SLUG_EXISTS", "message": "A blog post with this slug already exists."},
+            )
 
-    post = await prisma.blogpost.create(
-        data={
-            "title": payload.title,
-            "slug": payload.slug,
-            "excerpt": payload.excerpt,
-            "content": payload.content,
-            "status": payload.status,
-            "published_at": published_at,
-            "meta_title": payload.meta_title,
-            "meta_description": payload.meta_description,
-            "created_by_user_id": context.user["id"],
-            "updated_by_user_id": context.user["id"],
-        }
-    )
+        # Set published_at if status is PUBLISHED
+        published_at = datetime.utcnow() if payload.status == "PUBLISHED" else None
 
-    return BlogPostSingleResponse(
-        data=BlogPostResponse(
-            id=post.id,
-            title=post.title,
-            slug=post.slug,
-            excerpt=post.excerpt,
-            content=post.content,
-            status=post.status,
-            published_at=post.published_at,
-            created_at=post.created_at,
-            updated_at=post.updated_at,
-            meta_title=post.meta_title,
-            meta_description=post.meta_description,
-            created_by_user_id=post.created_by_user_id,
-            updated_by_user_id=post.updated_by_user_id,
+        post = await prisma.blogpost.create(
+            data={
+                "title": payload.title,
+                "slug": payload.slug,
+                "excerpt": payload.excerpt,
+                "content": payload.content,
+                "status": payload.status,
+                "published_at": published_at,
+                "meta_title": payload.meta_title,
+                "meta_description": payload.meta_description,
+                "created_by_user_id": user_id,
+                "updated_by_user_id": user_id,
+            }
         )
-    )
+
+        return BlogPostSingleResponse(
+            data=BlogPostResponse(
+                id=post.id,
+                title=post.title,
+                slug=post.slug,
+                excerpt=post.excerpt,
+                content=post.content,
+                status=post.status,
+                published_at=post.published_at,
+                created_at=post.created_at,
+                updated_at=post.updated_at,
+                meta_title=post.meta_title,
+                meta_description=post.meta_description,
+                created_by_user_id=post.created_by_user_id,
+                updated_by_user_id=post.updated_by_user_id,
+            )
+        )
+    except HTTPException:
+        raise  # Re-raise HTTPExceptions as-is
+    except Exception as e:
+        logger.exception(f"Error creating blog post: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "BLOG_CREATE_ERROR", "message": f"Failed to create blog post: {str(e)}"},
+        )
 
 
 @router.put("/blog/{post_id}", response_model=BlogPostSingleResponse)
