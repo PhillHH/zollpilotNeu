@@ -142,12 +142,28 @@ def create_app() -> FastAPI:
         logger = log_request(request)
         logger.warning("Validation error", error_code=ErrorCode.VALIDATION_ERROR.value)
 
+        # Sanitize errors to ensure JSON serializability
+        # exc.errors() may contain non-serializable objects in 'ctx'
+        sanitized_errors = []
+        for err in exc.errors():
+            sanitized_err = {
+                "loc": err.get("loc"),
+                "msg": str(err.get("msg", "")),
+                "type": err.get("type"),
+            }
+            # Only include 'input' if it's a simple type
+            if "input" in err:
+                input_val = err["input"]
+                if isinstance(input_val, (str, int, float, bool, type(None), list, dict)):
+                    sanitized_err["input"] = input_val
+            sanitized_errors.append(sanitized_err)
+
         return JSONResponse(
             status_code=400,
             content=error_response(
                 code=ErrorCode.VALIDATION_ERROR.value,
                 message="Request validation failed.",
-                details=exc.errors(),
+                details=sanitized_errors,
                 request_id=request_id,
             ),
         )
