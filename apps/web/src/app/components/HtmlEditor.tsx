@@ -25,6 +25,7 @@ export function HtmlEditor({
       value={value}
       onEditorChange={(newValue) => onChange(newValue)}
       init={{
+        license_key: "gpl",
         height,
         menubar: true,
         plugins: [
