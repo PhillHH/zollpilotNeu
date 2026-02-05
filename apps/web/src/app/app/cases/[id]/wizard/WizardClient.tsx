@@ -77,8 +77,9 @@ export function WizardClient({ caseId }: WizardClientProps) {
   // Debounce timers
   const [debounceTimers, setDebounceTimers] = useState<Record<string, NodeJS.Timeout>>({});
 
-  // Readonly mode when case is not DRAFT
-  const isReadonly = caseData?.status !== "DRAFT";
+  // Readonly mode when case is PREPARED, COMPLETED, or ARCHIVED
+  // DRAFT and IN_PROCESS allow editing
+  const isReadonly = ["PREPARED", "COMPLETED", "ARCHIVED"].includes(caseData?.status ?? "");
 
   // Check if all required fields are filled (all steps complete)
   const allStepsComplete = useMemo(() => {
@@ -181,8 +182,8 @@ export function WizardClient({ caseId }: WizardClientProps) {
         setProcedure(procResponse.data);
       }
 
-      // Apply profile defaults for new cases (DRAFT with few/no fields)
-      if (loadedCase.status === "DRAFT" && loadedCase.fields.length < 5) {
+      // Apply profile defaults for new cases (DRAFT or IN_PROCESS with few/no fields)
+      if (["DRAFT", "IN_PROCESS"].includes(loadedCase.status) && loadedCase.fields.length < 5) {
         applyProfileDefaults(values);
       }
     } catch (err) {
@@ -441,13 +442,15 @@ export function WizardClient({ caseId }: WizardClientProps) {
             Schritt {currentStepIndex + 1} von {totalSteps}
           </p>
         </div>
-        {isReadonly && <Badge status="submitted">{""}</Badge>}
+        {isReadonly && <Badge status={caseData?.status?.toLowerCase() as "prepared" | "completed" | "archived"}>{""}</Badge>}
       </header>
 
       {/* Readonly Banner */}
       {isReadonly && (
-        <Alert variant="info" title="Nur Lesen">
-          Dieser Fall ist abgeschlossen. Änderungen sind nicht mehr möglich.
+        <Alert variant="info" title="Nur Ansicht">
+          {caseData?.status === "PREPARED"
+            ? "Die Vorbereitung ist abgeschlossen. Sie können die Daten ansehen, aber nicht mehr ändern. Nutzen Sie 'Daten korrigieren' in der Zusammenfassung, um Änderungen vorzunehmen."
+            : "Dieser Fall ist abgeschlossen. Änderungen sind nicht mehr möglich."}
         </Alert>
       )}
 

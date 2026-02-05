@@ -111,8 +111,37 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
   };
 
   const canDownloadPdf =
-    caseData?.status === "SUBMITTED" && (billingInfo?.credits.balance ?? 0) >= 1;
+    ["PREPARED", "COMPLETED"].includes(caseData?.status ?? "") && (billingInfo?.credits.balance ?? 0) >= 1;
   const hasNoCredits = (billingInfo?.credits.balance ?? 0) < 1;
+
+  // Reopen case for editing (PREPARED → IN_PROCESS)
+  const [reopening, setReopening] = useState(false);
+  const handleReopen = async () => {
+    setReopening(true);
+    try {
+      await casesApi.reopen(caseId);
+      router.push(`/app/cases/${caseId}/wizard`);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.message || "Fehler beim Wiedereröffnen.");
+      setReopening(false);
+    }
+  };
+
+  // Mark case as completed (PREPARED → COMPLETED)
+  const [completing, setCompleting] = useState(false);
+  const handleComplete = async () => {
+    setCompleting(true);
+    try {
+      await casesApi.complete(caseId);
+      await loadData(); // Reload to show new status
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.message || "Fehler beim Abschließen.");
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -129,8 +158,12 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
     switch (status?.toUpperCase()) {
       case "DRAFT":
         return <Badge status="draft" />;
-      case "SUBMITTED":
-        return <Badge status="submitted" />;
+      case "IN_PROCESS":
+        return <Badge status="in_process" />;
+      case "PREPARED":
+        return <Badge status="prepared" />;
+      case "COMPLETED":
+        return <Badge status="completed" />;
       case "ARCHIVED":
         return <Badge status="archived" />;
       default:
@@ -193,35 +226,62 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
       </header>
 
       {/* Info Banner */}
-      {caseData?.status === "SUBMITTED" && (
+      {["PREPARED", "COMPLETED"].includes(caseData?.status ?? "") && (
         <Alert variant="info" title="Rechtlicher Hinweis">
           Diese Übersicht unterstützt Sie beim Ausfüllen des Zollformulars. Sie
           ersetzt keine offizielle Zollanmeldung.
         </Alert>
       )}
 
-      {/* Assist Mode CTA */}
-      {caseData?.status === "SUBMITTED" && (
+      {/* PREPARED Status: Next Steps CTA */}
+      {caseData?.status === "PREPARED" && (
         <div className="assist-cta" style={{ marginBottom: "var(--space-xl)" }}>
-          <Alert variant="info" title="Nächster Schritt">
+          <Alert variant="success" title="Ihre Zollanmeldung ist vorbereitet">
             <div className="cta-content">
               <p>
                 Nutzen Sie unsere <strong>interaktive Ausfüllhilfe</strong>, um die Daten
                 Schritt für Schritt in das offizielle Zollformular zu übertragen.
               </p>
-              <div className="cta-actions" style={{ marginTop: "var(--space-md)" }}>
+              <div className="cta-actions" style={{ marginTop: "var(--space-md)", display: "flex", gap: "var(--space-md)", flexWrap: "wrap" }}>
                 <Button
                   variant="primary"
                   onClick={() => router.push(`/app/cases/${caseId}/assist`)}
                 >
                   Ausfüllhilfe starten →
                 </Button>
-                <div style={{ marginTop: "var(--space-xs)" }}>
-                  <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)" }}>
-                    Alternativ: <a href="#" onClick={(e) => { e.preventDefault(); /* PDF logic */ }}>PDF herunterladen</a>
-                  </span>
-                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleReopen}
+                  loading={reopening}
+                >
+                  Daten korrigieren
+                </Button>
               </div>
+              <div style={{ marginTop: "var(--space-md)", borderTop: "1px solid var(--color-border)", paddingTop: "var(--space-md)" }}>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-text-muted)", marginBottom: "var(--space-sm)" }}>
+                  Haben Sie die Zollanmeldung bereits beim Zoll eingereicht?
+                </p>
+                <Button
+                  variant="ghost"
+                  onClick={handleComplete}
+                  loading={completing}
+                >
+                  ✓ Als erledigt markieren
+                </Button>
+              </div>
+            </div>
+          </Alert>
+        </div>
+      )}
+
+      {/* COMPLETED Status: Done Banner */}
+      {caseData?.status === "COMPLETED" && (
+        <div className="assist-cta" style={{ marginBottom: "var(--space-xl)" }}>
+          <Alert variant="info" title="Zollanmeldung erledigt">
+            <div className="cta-content">
+              <p>
+                Sie haben diesen Fall als erledigt markiert. Die Daten stehen weiterhin zur Ansicht und zum PDF-Export bereit.
+              </p>
             </div>
           </Alert>
         </div>
@@ -281,8 +341,8 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
                 )}
 
                 <p className="pdf-hint">
-                  {caseData?.status !== "SUBMITTED"
-                    ? "Fall muss zuerst abgeschlossen werden."
+                  {!["PREPARED", "COMPLETED"].includes(caseData?.status ?? "")
+                    ? "Vorbereitung muss zuerst abgeschlossen werden."
                     : hasNoCredits
                       ? (
                         <>
@@ -294,17 +354,17 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
                 </p>
               </Card>
             </>
-          ) : caseData?.status === "DRAFT" ? (
+          ) : caseData?.status === "DRAFT" || caseData?.status === "IN_PROCESS" ? (
             <Card padding="lg">
               <div className="empty-state">
                 <div className="empty-icon">📝</div>
-                <h3 className="empty-title">Noch nicht abgeschlossen</h3>
+                <h3 className="empty-title">Vorbereitung nicht abgeschlossen</h3>
                 <p className="empty-text">
-                  Der Case wurde noch nicht abgeschlossen. Füllen Sie den Wizard aus
+                  Die Vorbereitung wurde noch nicht abgeschlossen. Füllen Sie den Wizard aus
                   und schließen Sie die Vorbereitung ab.
                 </p>
                 <Link href={`/app/cases/${caseId}/wizard`}>
-                  <Button variant="primary">Zum Wizard</Button>
+                  <Button variant="primary">Weiter ausfüllen</Button>
                 </Link>
               </div>
             </Card>

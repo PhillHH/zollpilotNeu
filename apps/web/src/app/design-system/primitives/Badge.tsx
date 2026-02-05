@@ -2,8 +2,8 @@
 
 import React from "react";
 
-type BadgeVariant = "default" | "primary" | "success" | "warning" | "danger" | "info";
-type BadgeStatus = "draft" | "submitted" | "archived";
+type BadgeVariant = "default" | "primary" | "success" | "warning" | "danger" | "info" | "neutral";
+type BadgeStatus = "draft" | "in_process" | "prepared" | "completed" | "archived";
 
 type BadgeProps = {
   /** Badge-Inhalt (optional wenn status verwendet wird) */
@@ -20,10 +20,12 @@ type BadgeProps = {
 
 /**
  * Badge – Status-Anzeige für Labels und Tags
- * 
+ *
  * Status-Mapping (Deutsch):
  * - draft → "Entwurf"
- * - submitted → "Eingereicht"
+ * - in_process → "In Bearbeitung"
+ * - prepared → "Vorbereitet"
+ * - completed → "Erledigt"
  * - archived → "Archiviert"
  */
 export function Badge({
@@ -43,9 +45,17 @@ export function Badge({
         effectiveVariant = "default";
         displayText = "Entwurf";
         break;
-      case "submitted":
+      case "in_process":
+        effectiveVariant = "primary";
+        displayText = "In Bearbeitung";
+        break;
+      case "prepared":
         effectiveVariant = "success";
-        displayText = "Bereit";
+        displayText = "Vorbereitet";
+        break;
+      case "completed":
+        effectiveVariant = "neutral";
+        displayText = "Erledigt";
         break;
       case "archived":
         effectiveVariant = "info";
@@ -111,6 +121,11 @@ export function Badge({
         .badge--info {
           background: var(--color-status-archived-bg);
           color: var(--color-status-archived);
+        }
+
+        .badge--neutral {
+          background: var(--color-border, #e5e5e5);
+          color: var(--color-text-muted, #6b7280);
         }
       `}</style>
     </span>

@@ -1,8 +1,9 @@
 # IZA Hero-Flow – SOLL-Zielbild & Statusmodell
 
 **Datum:** 2026-02-05
-**Status:** Verbindliche Spezifikation
+**Status:** ✅ Implementiert
 **Basis:** IZA-HERO-FLOW-ANALYSE.md
+**Implementierung:** IZA-HERO-FLOW.md
 
 ---
 

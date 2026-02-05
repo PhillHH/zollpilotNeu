@@ -157,13 +157,13 @@ export function CasesClient({ initialCases }: CasesClientProps) {
     };
   };
 
-  // Load details for visible cases
+  // Load details for visible cases (DRAFT and IN_PROCESS)
   useEffect(() => {
     casesList.forEach((c) => {
       if (
         c.procedureName === undefined &&
         !c.isLoadingDetails &&
-        c.status.toUpperCase() === "DRAFT"
+        ["DRAFT", "IN_PROCESS"].includes(c.status.toUpperCase())
       ) {
         setCasesList((prev) =>
           prev.map((item) =>
@@ -275,8 +275,12 @@ export function CasesClient({ initialCases }: CasesClientProps) {
     switch (status.toUpperCase()) {
       case "DRAFT":
         return <Badge status="draft" />;
-      case "SUBMITTED":
-        return <Badge variant="success">Bereit</Badge>;
+      case "IN_PROCESS":
+        return <Badge status="in_process" />;
+      case "PREPARED":
+        return <Badge status="prepared" />;
+      case "COMPLETED":
+        return <Badge status="completed" />;
       case "ARCHIVED":
         return <Badge status="archived" />;
       default:
@@ -292,9 +296,12 @@ export function CasesClient({ initialCases }: CasesClientProps) {
     const status = caseItem.status.toUpperCase();
     switch (status) {
       case "DRAFT":
+      case "IN_PROCESS":
         return { label: "Weiter ausfüllen", href: `/app/cases/${caseItem.id}/wizard` };
-      case "SUBMITTED":
+      case "PREPARED":
         return { label: "Zusammenfassung ansehen", href: `/app/cases/${caseItem.id}/summary` };
+      case "COMPLETED":
+        return { label: "Details ansehen", href: `/app/cases/${caseItem.id}/summary` };
       case "ARCHIVED":
         return { label: "Fall ansehen", href: `/app/cases/${caseItem.id}` };
       default:
@@ -303,7 +310,7 @@ export function CasesClient({ initialCases }: CasesClientProps) {
   };
 
   const hasOnlyCompletedCases = casesList.length > 0 &&
-    casesList.every((c) => c.status.toUpperCase() !== "DRAFT");
+    casesList.every((c) => !["DRAFT", "IN_PROCESS"].includes(c.status.toUpperCase()));
 
   return (
     <Section maxWidth="lg" padding="xl">
@@ -419,7 +426,7 @@ export function CasesClient({ initialCases }: CasesClientProps) {
                         ) : (
                           <h3 className="case-title">
                             <span className="title-text">{getCaseTitle(item)}</span>
-                            {item.status.toUpperCase() === "DRAFT" && (
+                            {["DRAFT", "IN_PROCESS"].includes(item.status.toUpperCase()) && (
                               <button
                                 type="button"
                                 className="edit-btn"

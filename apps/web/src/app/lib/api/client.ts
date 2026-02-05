@@ -78,12 +78,15 @@ export async function apiRequest<T>(
 /**
  * Verbindliche Case-Status.
  *
- * DRAFT: Fall angelegt, kein Verfahren gestartet
- * IN_PROCESS: Verfahren gewählt, Bearbeitung läuft
- * SUBMITTED: Anmeldung abgegeben
- * ARCHIVED: Fall abgeschlossen / abgelegt
+ * DRAFT: Fall angelegt, kein Verfahren gestartet (transient)
+ * IN_PROCESS: Verfahren gewählt, Bearbeitung läuft (editierbar)
+ * PREPARED: Vorbereitung abgeschlossen, bereit für Zollanmeldung (readonly)
+ * COMPLETED: Zollanmeldung beim Zoll eingereicht (readonly)
+ * ARCHIVED: Fall abgelegt (readonly)
+ *
+ * Migration: SUBMITTED → PREPARED
  */
-export type CaseStatus = "DRAFT" | "IN_PROCESS" | "SUBMITTED" | "ARCHIVED";
+export type CaseStatus = "DRAFT" | "IN_PROCESS" | "PREPARED" | "COMPLETED" | "ARCHIVED";
 
 export type CaseSummary = {
   id: string;
@@ -108,18 +111,19 @@ export type CaseDetail = CaseSummary & {
 };
 
 /**
- * Ergebnis einer erfolgreichen Abgabe.
+ * Ergebnis einer erfolgreichen Vorbereitung.
  *
- * Submit ist ein IRREVERSIBLES Domänenereignis:
- * - Case wird auf SUBMITTED gesetzt
+ * Submit setzt den Case auf PREPARED:
+ * - Case wird auf PREPARED gesetzt
  * - Wizard wird read-only
  * - ZollPilot übermittelt NICHT an den Zoll
+ * - Rückkehr zu IN_PROCESS möglich via reopen()
  */
 export type SubmitResult = {
   case_id: string;
   status: string;
   procedure_code: string;
-  submitted_at: string;
+  prepared_at: string;
   version: number;
   snapshot_id: string;
 };
@@ -182,12 +186,16 @@ export const cases = {
       ...init
     }),
 
-  create: (title?: string, init?: RequestInit) =>
+  /**
+   * Erstellt einen neuen Case.
+   * Optional mit procedure_code für automatisches Binding (z.B. "IZA").
+   */
+  create: (options?: { title?: string; procedure_code?: string }, init?: RequestInit) =>
     apiRequest<CaseSummaryResponse>("/cases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ title }),
+      body: JSON.stringify(options ?? {}),
       ...init
     }),
 
@@ -215,7 +223,7 @@ export const cases = {
 
   /**
    * Expliziter Statuswechsel für einen Case.
-   * Erlaubte Übergänge: DRAFT→IN_PROCESS, IN_PROCESS→SUBMITTED, SUBMITTED→ARCHIVED
+   * Erlaubte Übergänge: DRAFT→IN_PROCESS, IN_PROCESS→PREPARED, PREPARED→COMPLETED, COMPLETED→ARCHIVED
    */
   updateStatus: (id: string, status: CaseStatus, init?: RequestInit) =>
     apiRequest<CaseSummaryResponse>(`/cases/${id}/status`, {
@@ -236,8 +244,31 @@ export const cases = {
       ...init
     }),
 
+  /**
+   * Vorbereitung abschließen: IN_PROCESS → PREPARED
+   */
   submit: (id: string, init?: RequestInit) =>
     apiRequest<SubmitResponse>(`/cases/${id}/submit`, {
+      method: "POST",
+      credentials: "include",
+      ...init
+    }),
+
+  /**
+   * Fall wieder öffnen zur Bearbeitung: PREPARED → IN_PROCESS
+   */
+  reopen: (id: string, init?: RequestInit) =>
+    apiRequest<CaseSummaryResponse>(`/cases/${id}/reopen`, {
+      method: "POST",
+      credentials: "include",
+      ...init
+    }),
+
+  /**
+   * Fall als erledigt markieren: PREPARED → COMPLETED
+   */
+  complete: (id: string, init?: RequestInit) =>
+    apiRequest<CaseSummaryResponse>(`/cases/${id}/complete`, {
       method: "POST",
       credentials: "include",
       ...init
@@ -264,7 +295,7 @@ export const cases = {
   /**
    * Export case as PDF.
    * Returns Blob for download.
-   * Requires SUBMITTED status and 1 credit.
+   * Requires PREPARED or COMPLETED status and 1 credit.
    */
   exportPdf: async (id: string): Promise<{ blob: Blob; filename: string }> => {
     const response = await apiFetch(`/cases/${id}/pdf`, {
@@ -1190,8 +1221,10 @@ export type CaseStatusCounts = {
   drafts: number;
   /** Anzahl Fälle im Status IN_PROCESS (in Bearbeitung) */
   in_process: number;
-  /** Anzahl Fälle im Status SUBMITTED (eingereicht) */
-  submitted: number;
+  /** Anzahl Fälle im Status PREPARED (vorbereitet) */
+  prepared: number;
+  /** Anzahl Fälle im Status COMPLETED (erledigt) */
+  completed: number;
   /** Anzahl Fälle im Status ARCHIVED (archiviert) */
   archived: number;
   /** Gesamtanzahl aller Fälle */

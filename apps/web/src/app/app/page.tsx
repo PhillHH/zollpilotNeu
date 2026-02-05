@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Activity, CheckCircle, FileText, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useRouter } from "next/navigation";
+import { Activity, CheckCircle, FileText, Clock, AlertTriangle, RefreshCw, Plus } from 'lucide-react';
 import { dashboard, cases, DashboardMetrics, CaseSummary, ApiError } from "../lib/api/client";
 import {
   DashboardGrid,
@@ -21,10 +22,29 @@ import {
  * - /cases API für Fall-Liste
  */
 export default function AppDashboard() {
+  const router = useRouter();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [recentCases, setRecentCases] = useState<CaseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; code?: string; requestId?: string | null } | null>(null);
+  const [creatingIza, setCreatingIza] = useState(false);
+
+  // Create new IZA case and navigate to wizard
+  const handleCreateIza = async () => {
+    setCreatingIza(true);
+    try {
+      const response = await cases.create({ procedure_code: "IZA" });
+      router.push(`/app/cases/${response.data.id}/wizard`);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError({
+        message: apiErr.message || "Fehler beim Erstellen des Falls.",
+        code: apiErr.code,
+        requestId: apiErr.requestId,
+      });
+      setCreatingIza(false);
+    }
+  };
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -131,13 +151,23 @@ export default function AppDashboard() {
       <SectionHeader
         title="Übersicht"
         action={
-          <button
-            onClick={loadDashboardData}
-            className="text-xs text-[#6F767E] hover:text-[#1A1D1F] px-3 py-1.5 rounded-lg border border-[#EFEFEF] hover:bg-gray-50 transition-colors flex items-center gap-2"
-          >
-            <RefreshCw className="w-3 h-3" />
-            Aktualisieren
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadDashboardData}
+              className="text-xs text-[#6F767E] hover:text-[#1A1D1F] px-3 py-1.5 rounded-lg border border-[#EFEFEF] hover:bg-gray-50 transition-colors flex items-center gap-2"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Aktualisieren
+            </button>
+            <button
+              onClick={handleCreateIza}
+              disabled={creatingIza}
+              className="text-sm text-white px-4 py-2 rounded-lg bg-[#2A85FF] hover:bg-[#1A75EF] transition-colors flex items-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4" />
+              {creatingIza ? "Wird erstellt..." : "Neue Zollanmeldung"}
+            </button>
+          </div>
         }
       />
 
@@ -175,11 +205,11 @@ export default function AppDashboard() {
           iconBgClass="bg-[#B5E4CA]"
         />
 
-        {/* Eingereicht */}
+        {/* Vorbereitet */}
         <MetricCard
-          label="Eingereicht"
-          value={counts?.submitted ?? 0}
-          sublabel={null}
+          label="Vorbereitet"
+          value={counts?.prepared ?? 0}
+          sublabel={counts?.completed ? `${counts.completed} erledigt` : null}
           icon={CheckCircle}
           iconBgClass="bg-[#CABDFF]"
         />
@@ -361,7 +391,8 @@ function RecentCasesList({ cases }: RecentCasesListProps) {
     const config = {
       DRAFT: { label: "Entwurf", bgClass: "bg-[#F4F4F4]", textClass: "text-[#6F767E]" },
       IN_PROCESS: { label: "In Bearbeitung", bgClass: "bg-[#B5E4CA]", textClass: "text-[#1A1D1F]" },
-      SUBMITTED: { label: "Eingereicht", bgClass: "bg-[#CABDFF]", textClass: "text-[#1A1D1F]" },
+      PREPARED: { label: "Vorbereitet", bgClass: "bg-[#CABDFF]", textClass: "text-[#1A1D1F]" },
+      COMPLETED: { label: "Erledigt", bgClass: "bg-[#E5E5E5]", textClass: "text-[#6F767E]" },
       ARCHIVED: { label: "Archiviert", bgClass: "bg-[#F4F4F4]", textClass: "text-[#6F767E]" },
     }[status] ?? { label: status, bgClass: "bg-[#F4F4F4]", textClass: "text-[#6F767E]" };
 
