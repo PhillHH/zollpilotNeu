@@ -9,6 +9,7 @@ import { Card } from "../../../../design-system/primitives/Card";
 import { Button } from "../../../../design-system/primitives/Button";
 import { Badge } from "../../../../design-system/primitives/Badge";
 import { Alert } from "../../../../design-system/primitives/Alert";
+import { useToast } from "../../../../design-system/primitives/Toast";
 
 import {
   cases as casesApi,
@@ -20,6 +21,12 @@ import {
   type BillingMe,
 } from "../../../../lib/api/client";
 
+import {
+  getErrorMessage,
+  isConcurrentModificationError,
+  createReloadAction,
+} from "../../../../lib/errors";
+
 type SummaryClientProps = {
   caseId: string;
 };
@@ -29,6 +36,7 @@ type SummaryClientProps = {
  */
 export function SummaryClient({ caseId }: SummaryClientProps) {
   const router = useRouter();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,27 +125,49 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
   // Reopen case for editing (PREPARED → IN_PROCESS)
   const [reopening, setReopening] = useState(false);
   const handleReopen = async () => {
+    if (reopening) return; // Prevent double-click
     setReopening(true);
+    setError(null);
+
     try {
       await casesApi.reopen(caseId);
-      router.push(`/app/cases/${caseId}/wizard`);
+      toast.success("Bearbeitung wieder geöffnet.");
+      // Small delay for user to see feedback
+      setTimeout(() => {
+        router.push(`/app/cases/${caseId}/wizard`);
+      }, 300);
     } catch (err) {
       const apiErr = err as ApiError;
-      setError(apiErr.message || "Fehler beim Wiedereröffnen.");
       setReopening(false);
+
+      if (isConcurrentModificationError(err)) {
+        toast.error(getErrorMessage(apiErr), { action: createReloadAction() });
+      } else {
+        toast.error(getErrorMessage(apiErr));
+      }
     }
   };
 
   // Mark case as completed (PREPARED → COMPLETED)
   const [completing, setCompleting] = useState(false);
   const handleComplete = async () => {
+    if (completing) return; // Prevent double-click
     setCompleting(true);
+    setError(null);
+
     try {
       await casesApi.complete(caseId);
-      await loadData(); // Reload to show new status
+      toast.success("Fall als erledigt markiert.");
+      // Reload to show new status
+      await loadData();
     } catch (err) {
       const apiErr = err as ApiError;
-      setError(apiErr.message || "Fehler beim Abschließen.");
+
+      if (isConcurrentModificationError(err)) {
+        toast.error(getErrorMessage(apiErr), { action: createReloadAction() });
+      } else {
+        toast.error(getErrorMessage(apiErr));
+      }
     } finally {
       setCompleting(false);
     }

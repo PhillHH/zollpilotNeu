@@ -258,6 +258,66 @@ model Case {
 
 ---
 
+## UX-Verhalten bei Fehlern & Statuswechseln
+
+### Erfolgs-Feedback (Toast-Nachrichten)
+
+| Aktion | Toast-Nachricht |
+|--------|----------------|
+| Vorbereitung abschließen (IN_PROCESS → PREPARED) | "Vorbereitung erfolgreich abgeschlossen." |
+| Daten korrigieren (PREPARED → IN_PROCESS) | "Bearbeitung wieder geöffnet." |
+| Als erledigt markieren (PREPARED → COMPLETED) | "Fall als erledigt markiert." |
+
+### Fehlerbehandlung
+
+#### 409 Concurrent Modification
+Wenn der Status zwischenzeitlich geändert wurde (z.B. durch einen anderen Browser-Tab):
+
+- **Toast-Nachricht:** "Der Status wurde zwischenzeitlich geändert. Bitte laden Sie den Fall neu."
+- **Action-Button:** "Neu laden" (ruft `window.location.reload()` auf)
+- **UI-Verhalten:** Button wird wieder aktiviert, kein automatischer Redirect
+
+#### Andere Fehler
+
+| Fehlercode | Benutzerfreundliche Nachricht |
+|------------|------------------------------|
+| CANNOT_REOPEN | "Dieser Fall kann nicht zur Bearbeitung geöffnet werden." |
+| CANNOT_COMPLETE | "Dieser Fall kann nicht als erledigt markiert werden." |
+| CASE_INVALID | "Der Fall enthält Fehler. Bitte korrigieren Sie diese." |
+| NETWORK_ERROR | "Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung." |
+| TIMEOUT | "Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es erneut." |
+| (Fallback) | "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut." |
+
+### Button-Verhalten
+
+1. **Loading-State:** Button zeigt Spinner während Request
+2. **Disabled:** Button ist während Loading deaktiviert (verhindert Doppelklick)
+3. **Nach Erfolg:** Kurze Verzögerung (300-400ms), dann Redirect
+4. **Nach Fehler:** Button wird wieder aktiviert
+
+### Edge-Cases
+
+| Szenario | Verhalten |
+|----------|-----------|
+| Status ändert sich serverseitig während Bearbeitung | Toast-Warnung + Wizard zeigt Readonly-Banner |
+| Netzwerk-Timeout | Kein Statuswechsel im UI, Retry-Hinweis |
+| Case lädt mit unerwartetem Status | UI aktualisiert sich sauber |
+
+### Implementierungsdetails
+
+**Toast-System:** `apps/web/src/app/design-system/primitives/Toast.tsx`
+- Context-basiert (ToastProvider in AppShell)
+- Varianten: success, error, warning, info
+- Auto-dismiss nach 5s (8s bei Fehlern)
+- Optional: Action-Button für Reload/Retry
+
+**Error-Utilities:** `apps/web/src/app/lib/errors.ts`
+- `getErrorMessage(code)` - Übersetzt Error-Code zu Benutzer-Nachricht
+- `isConcurrentModificationError(err)` - Prüft auf 409/Concurrency
+- `createReloadAction()` - Erstellt Reload-Button für Toast
+
+---
+
 ## Offene Punkte
 
 1. **Datenbank-Migration** (ausstehend):

@@ -27,12 +27,28 @@ export type ErrorCode =
   | "CASE_NOT_EDITABLE"
   | "CASE_NOT_SUBMITTED"
   | "CASE_ARCHIVED"
+  | "CASE_COMPLETED"
+  | "CASE_NOT_IN_PROCESS"
   | "NO_SNAPSHOT"
   | "INSUFFICIENT_CREDITS"
   | "PAYLOAD_TOO_LARGE"
   | "RATE_LIMITED"
   | "INTERNAL_SERVER_ERROR"
-  | "UNKNOWN_ERROR";
+  | "UNKNOWN_ERROR"
+  // New status-related errors
+  | "CONCURRENT_MODIFICATION"
+  | "STATUS_UNCHANGED"
+  | "INVALID_STATUS"
+  | "STATUS_ROLLBACK_NOT_ALLOWED"
+  | "STATUS_SKIP_NOT_ALLOWED"
+  | "CANNOT_REOPEN"
+  | "CANNOT_COMPLETE"
+  | "WIZARD_NOT_COMPLETED"
+  | "WIZARD_NOT_INITIALIZED"
+  | "NO_TENANT"
+  | "NO_USER"
+  | "NETWORK_ERROR"
+  | "TIMEOUT";
 
 /**
  * Benutzerfreundliche Fehlermeldungen für jeden Error Code.
@@ -55,12 +71,28 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
   CASE_NOT_EDITABLE: "Dieser Fall kann nicht mehr bearbeitet werden.",
   CASE_NOT_SUBMITTED: "Der Fall muss zuerst eingereicht werden.",
   CASE_ARCHIVED: "Archivierte Fälle können nicht geändert werden.",
+  CASE_COMPLETED: "Dieser Fall ist abgeschlossen und kann nicht mehr bearbeitet werden.",
+  CASE_NOT_IN_PROCESS: "Der Fall befindet sich nicht in Bearbeitung.",
   NO_SNAPSHOT: "Kein Snapshot vorhanden. Bitte reichen Sie den Fall zuerst ein.",
   INSUFFICIENT_CREDITS: "Nicht genügend Credits. Bitte laden Sie Credits auf.",
   PAYLOAD_TOO_LARGE: "Die Daten sind zu groß. Bitte reduzieren Sie die Eingabe.",
   RATE_LIMITED: "Zu viele Anfragen. Bitte warten Sie einen Moment.",
   INTERNAL_SERVER_ERROR: "Ein Serverfehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
-  UNKNOWN_ERROR: "Ein unbekannter Fehler ist aufgetreten.",
+  UNKNOWN_ERROR: "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+  // Status transition errors
+  CONCURRENT_MODIFICATION: "Der Status wurde zwischenzeitlich geändert. Bitte laden Sie den Fall neu.",
+  STATUS_UNCHANGED: "Der Status wurde bereits geändert.",
+  INVALID_STATUS: "Ungültiger Status.",
+  STATUS_ROLLBACK_NOT_ALLOWED: "Diese Statusänderung ist nicht erlaubt.",
+  STATUS_SKIP_NOT_ALLOWED: "Statusschritte können nicht übersprungen werden.",
+  CANNOT_REOPEN: "Dieser Fall kann nicht zur Bearbeitung geöffnet werden.",
+  CANNOT_COMPLETE: "Dieser Fall kann nicht als erledigt markiert werden.",
+  WIZARD_NOT_COMPLETED: "Bitte füllen Sie zuerst alle Schritte des Assistenten aus.",
+  WIZARD_NOT_INITIALIZED: "Der Assistent wurde noch nicht gestartet.",
+  NO_TENANT: "Keine Berechtigung. Bitte melden Sie sich erneut an.",
+  NO_USER: "Benutzer nicht gefunden. Bitte melden Sie sich erneut an.",
+  NETWORK_ERROR: "Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung.",
+  TIMEOUT: "Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.",
 };
 
 /**
@@ -130,5 +162,61 @@ export function isErrorCode(error: unknown, code: ErrorCode): boolean {
     return (error as { code: string }).code === code;
   }
   return false;
+}
+
+/**
+ * Prüft ob ein Fehler ein Concurrent Modification Error ist (409).
+ */
+export function isConcurrentModificationError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const apiError = error as ApiError;
+
+  return (
+    apiError.status === 409 ||
+    apiError.code === "CONCURRENT_MODIFICATION" ||
+    apiError.code === "STATUS_UNCHANGED"
+  );
+}
+
+/**
+ * Prüft ob ein Fehler ein Netzwerkfehler ist.
+ */
+export function isNetworkError(error: unknown): boolean {
+  if (!error) return false;
+
+  if (error instanceof TypeError && error.message.includes("fetch")) {
+    return true;
+  }
+
+  if (typeof error === "object") {
+    const apiError = error as ApiError;
+    return (
+      apiError.code === "NETWORK_ERROR" ||
+      apiError.code === "TIMEOUT" ||
+      apiError.status === 0
+    );
+  }
+
+  return false;
+}
+
+/**
+ * Erstellt eine Reload-Action für Toast-Benachrichtigungen.
+ */
+export function createReloadAction() {
+  return {
+    label: "Neu laden",
+    onClick: () => window.location.reload(),
+  };
+}
+
+/**
+ * Erstellt eine Retry-Action für Toast-Benachrichtigungen.
+ */
+export function createRetryAction(callback: () => void) {
+  return {
+    label: "Erneut versuchen",
+    onClick: callback,
+  };
 }
 

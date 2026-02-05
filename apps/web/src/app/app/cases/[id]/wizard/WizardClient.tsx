@@ -9,6 +9,7 @@ import { Button } from "../../../../design-system/primitives/Button";
 import { Alert } from "../../../../design-system/primitives/Alert";
 import { Badge } from "../../../../design-system/primitives/Badge";
 import { Stepper, type Step } from "../../../../design-system/primitives/Stepper";
+import { useToast } from "../../../../design-system/primitives/Toast";
 
 import {
   cases as casesApi,
@@ -22,6 +23,12 @@ import {
   type ApiError,
   type ProfileData,
 } from "../../../../lib/api/client";
+
+import {
+  getErrorMessage,
+  isConcurrentModificationError,
+  createReloadAction,
+} from "../../../../lib/errors";
 
 import { ProcedureSelector } from "./ProcedureSelector";
 import { FieldRenderer } from "./FieldRenderer";
@@ -55,6 +62,7 @@ const STEP_HINTS: Record<string, string> = {
  */
 export function WizardClient({ caseId }: WizardClientProps) {
   const router = useRouter();
+  const toast = useToast();
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -161,6 +169,9 @@ export function WizardClient({ caseId }: WizardClientProps) {
     [caseId]
   );
 
+  // Track previous status for change detection
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+
   // Load case and procedure
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -169,6 +180,19 @@ export function WizardClient({ caseId }: WizardClientProps) {
     try {
       const caseResponse = await casesApi.get(caseId);
       const loadedCase = caseResponse.data;
+
+      // Detect status change (e.g., became readonly while user was editing)
+      if (
+        previousStatus &&
+        previousStatus !== loadedCase.status &&
+        ["PREPARED", "COMPLETED", "ARCHIVED"].includes(loadedCase.status)
+      ) {
+        toast.warning(
+          "Der Fall wurde zwischenzeitlich geändert und ist jetzt schreibgeschützt."
+        );
+      }
+
+      setPreviousStatus(loadedCase.status);
       setCaseData(loadedCase);
 
       const values: Record<string, unknown> = {};
@@ -188,11 +212,11 @@ export function WizardClient({ caseId }: WizardClientProps) {
       }
     } catch (err) {
       const apiErr = err as ApiError;
-      setError(apiErr.message || "Fehler beim Laden.");
+      setError(getErrorMessage(apiErr));
     } finally {
       setLoading(false);
     }
-  }, [caseId, applyProfileDefaults]);
+  }, [caseId, applyProfileDefaults, previousStatus, toast]);
 
   useEffect(() => {
     loadData();
@@ -270,24 +294,32 @@ export function WizardClient({ caseId }: WizardClientProps) {
 
   // Submit case
   const handleSubmit = useCallback(async () => {
+    if (isSubmitting) return; // Prevent double-click
     setIsSubmitting(true);
     setError(null);
 
     try {
       await casesApi.submit(caseId);
-      router.push(`/app/cases/${caseId}/summary`);
+      toast.success("Vorbereitung erfolgreich abgeschlossen.");
+      // Small delay for user to see feedback
+      setTimeout(() => {
+        router.push(`/app/cases/${caseId}/summary`);
+      }, 400);
     } catch (err) {
       const apiErr = err as ApiError;
+
       if (apiErr.code === "CASE_INVALID") {
-        setError("Der Fall enthält noch Fehler. Bitte korrigieren Sie diese zuerst.");
+        setError(getErrorMessage(apiErr));
+        toast.warning("Bitte korrigieren Sie die markierten Fehler.");
         await runValidation();
+      } else if (isConcurrentModificationError(err)) {
+        toast.error(getErrorMessage(apiErr), { action: createReloadAction() });
       } else {
-        setError(apiErr.message || "Fehler beim Abschließen der Vorbereitung.");
+        toast.error(getErrorMessage(apiErr));
       }
-    } finally {
       setIsSubmitting(false);
     }
-  }, [caseId, router]);
+  }, [caseId, router, toast, isSubmitting]);
 
   // Validate case
   const runValidation = useCallback(async () => {
