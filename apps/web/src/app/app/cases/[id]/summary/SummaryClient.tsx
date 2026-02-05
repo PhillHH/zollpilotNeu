@@ -141,9 +141,9 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
       setReopening(false);
 
       if (isConcurrentModificationError(err)) {
-        toast.error(getErrorMessage(apiErr), { action: createReloadAction() });
+        toast.error(getErrorMessage(apiErr.code), { action: createReloadAction() });
       } else {
-        toast.error(getErrorMessage(apiErr));
+        toast.error(getErrorMessage(apiErr.code));
       }
     }
   };
@@ -164,9 +164,9 @@ export function SummaryClient({ caseId }: SummaryClientProps) {
       const apiErr = err as ApiError;
 
       if (isConcurrentModificationError(err)) {
-        toast.error(getErrorMessage(apiErr), { action: createReloadAction() });
+        toast.error(getErrorMessage(apiErr.code), { action: createReloadAction() });
       } else {
-        toast.error(getErrorMessage(apiErr));
+        toast.error(getErrorMessage(apiErr.code));
       }
     } finally {
       setCompleting(false);

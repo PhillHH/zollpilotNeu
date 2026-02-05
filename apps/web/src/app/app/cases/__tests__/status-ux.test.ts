@@ -8,6 +8,8 @@
  * - Error message localization
  */
 
+import { describe, it, expect, vi } from "vitest";
+
 import {
   getErrorMessage,
   isConcurrentModificationError,
@@ -127,7 +129,7 @@ describe("Error Handling", () => {
 
   describe("createRetryAction", () => {
     it("returns action with correct label and calls callback", () => {
-      const callback = jest.fn();
+      const callback = vi.fn();
       const action = createRetryAction(callback);
 
       expect(action.label).toBe("Erneut versuchen");
