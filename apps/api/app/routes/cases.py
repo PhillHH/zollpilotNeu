@@ -36,6 +36,7 @@ class StatusFilter(str, Enum):
 
 class CaseCreateRequest(BaseModel):
     title: str | None = None
+    procedure_code: str | None = None  # Optional: Auto-bind IZA procedure on create
 
 
 class CasePatchRequest(BaseModel):
@@ -68,8 +69,10 @@ class CaseDetail(BaseModel):
     version: int
     created_at: datetime
     updated_at: datetime
-    submitted_at: datetime | None
-    archived_at: datetime | None
+    prepared_at: datetime | None = None  # Zeitpunkt der Vorbereitung
+    completed_at: datetime | None = None  # Zeitpunkt der Zollanmeldung
+    submitted_at: datetime | None = None  # Deprecated, use prepared_at
+    archived_at: datetime | None = None
     procedure: ProcedureInfo | None
     fields: list[FieldResponse]
 
@@ -145,6 +148,13 @@ async def _get_case_or_404(
 async def create_case(
     payload: CaseCreateRequest, context: AuthContext = Depends(get_current_user)
 ) -> CaseSummaryResponse:
+    """
+    Create a new case.
+
+    Optional: If procedure_code is provided (e.g., "IZA"), the procedure will be
+    automatically bound and the case will be set to IN_PROCESS immediately.
+    This enables the IZA Hero-Flow where users can start the wizard directly.
+    """
     # Defensive: ensure tenant and user exist
     tenant_id = context.tenant.get("id") if context.tenant else None
     user_id = context.user.get("id") if context.user else None
@@ -161,15 +171,60 @@ async def create_case(
         )
 
     try:
-        case = await prisma.case.create(
-            data={
-                "tenant_id": tenant_id,
-                "created_by_user_id": user_id,
-                "title": payload.title or "Untitled",
-                "status": "DRAFT",
-            }
-        )
+        # If procedure_code is provided, find the procedure and auto-bind
+        procedure_id = None
+        initial_status = "DRAFT"
+
+        if payload.procedure_code:
+            # Find the active procedure by code
+            procedure = await prisma.procedure.find_first(
+                where={
+                    "code": payload.procedure_code.upper(),
+                    "is_active": True,
+                },
+                order={"version": "desc"},  # Get latest version
+            )
+
+            if procedure:
+                procedure_id = procedure.id
+                initial_status = "IN_PROCESS"  # Auto-transition to IN_PROCESS
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "code": "PROCEDURE_NOT_FOUND",
+                        "message": f"Procedure '{payload.procedure_code}' not found or inactive.",
+                    },
+                )
+
+        # Create case with optional procedure binding
+        case_data = {
+            "tenant_id": tenant_id,
+            "created_by_user_id": user_id,
+            "title": payload.title or "Neue Zollanmeldung",
+            "status": initial_status,
+        }
+
+        if procedure_id:
+            case_data["procedure_id"] = procedure_id
+
+        case = await prisma.case.create(data=case_data)
+
+        # If procedure was bound, create wizard progress
+        if procedure_id and payload.procedure_code:
+            await prisma.wizardprogress.create(
+                data={
+                    "case_id": case.id,
+                    "procedure_code": payload.procedure_code.upper(),
+                    "current_step": "paket",  # IZA starts with "paket" step
+                    "completed_steps": json.dumps([]),
+                    "is_completed": False,
+                }
+            )
+
         return CaseSummaryResponse(data=CaseSummary(**case.model_dump()))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -193,7 +248,8 @@ async def list_cases(
     where: dict[str, Any] = {"tenant_id": tenant_id}
 
     if status_filter == StatusFilter.ACTIVE:
-        where["status"] = {"in": ["DRAFT", "IN_PROCESS", "SUBMITTED"]}
+        # Include PREPARED, COMPLETED, and legacy SUBMITTED in active view
+        where["status"] = {"in": ["DRAFT", "IN_PROCESS", "PREPARED", "COMPLETED", "SUBMITTED"]}
     elif status_filter == StatusFilter.ARCHIVED:
         where["status"] = "ARCHIVED"
     # ALL: no status filter
@@ -231,6 +287,8 @@ async def get_new_case_template(
             version=0,
             created_at=now,
             updated_at=now,
+            prepared_at=None,
+            completed_at=None,
             submitted_at=None,
             archived_at=None,
             procedure=None,
@@ -273,7 +331,9 @@ async def get_case(
             version=case.version,
             created_at=case.created_at,
             updated_at=case.updated_at,
-            submitted_at=case.submitted_at,
+            prepared_at=case.prepared_at,
+            completed_at=case.completed_at,
+            submitted_at=case.submitted_at,  # Legacy
             archived_at=case.archived_at,
             procedure=procedure_info,
             fields=fields,
@@ -450,13 +510,14 @@ async def update_case_status(
 
     Erlaubte Übergänge:
     - DRAFT → IN_PROCESS (wenn Verfahren gebunden)
-    - IN_PROCESS → SUBMITTED (wenn validiert, besser via /submit)
-    - SUBMITTED → ARCHIVED
+    - IN_PROCESS → PREPARED (wenn validiert, besser via /submit)
+    - PREPARED → IN_PROCESS (Reopen, besser via /reopen)
+    - PREPARED → COMPLETED (besser via /complete)
+    - COMPLETED → ARCHIVED
 
-    Keine Rücksprünge, kein Überspringen.
-
-    Hinweis: Für SUBMITTED wird empfohlen, /cases/{id}/submit zu verwenden,
+    Hinweis: Für PREPARED wird empfohlen, /cases/{id}/submit zu verwenden,
     da dort auch die Validierung und Snapshot-Erstellung erfolgt.
+    Für COMPLETED wird /cases/{id}/complete empfohlen.
     """
     case = await _get_case_or_404(case_id, context.tenant["id"], context.user["id"])
 
@@ -490,8 +551,15 @@ async def update_case_status(
     # Update durchführen
     update_data: dict[str, Any] = {"status": target_status}
 
-    if target_status == CaseStatus.SUBMITTED.value:
+    # Set timestamps based on target status
+    if target_status == CaseStatus.PREPARED.value:
+        update_data["prepared_at"] = datetime.utcnow()
+        update_data["submitted_at"] = datetime.utcnow()  # Legacy field
+    elif target_status == CaseStatus.SUBMITTED.value:  # Legacy support
         update_data["submitted_at"] = datetime.utcnow()
+        update_data["prepared_at"] = datetime.utcnow()
+    elif target_status == CaseStatus.COMPLETED.value:
+        update_data["completed_at"] = datetime.utcnow()
     elif target_status == CaseStatus.ARCHIVED.value:
         update_data["archived_at"] = datetime.utcnow()
 

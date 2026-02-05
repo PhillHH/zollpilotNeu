@@ -5,6 +5,7 @@ import { Sidebar } from "../../components/Sidebar/Sidebar";
 import { SIDEBAR_NAVIGATION, SIDEBAR_BOTTOM_NAVIGATION, NavItem } from "../../../navigation/sidebar.config";
 import { apiRequest } from "../../lib/api/client";
 import { TopBar } from "../../components/TopBar/TopBar";
+import { ToastProvider } from "../../design-system/primitives/Toast";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -70,30 +71,32 @@ export function AppShell({ children }: AppShellProps) {
   });
 
   return (
-    <div className="app-shell flex h-screen w-full bg-[#F4F4F4]">
-      {/* Sidebar - Fixed width handled internally */}
-      <Sidebar
-        navItems={navItems}
-        bottomNavItems={bottomNavItems}
-        className="flex-shrink-0 z-50"
-      />
+    <ToastProvider>
+      <div className="app-shell flex h-screen w-full bg-[#F4F4F4]">
+        {/* Sidebar - Fixed width handled internally */}
+        <Sidebar
+          navItems={navItems}
+          bottomNavItems={bottomNavItems}
+          className="flex-shrink-0 z-50"
+        />
 
-      {/* Main Content Area Wrapper */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <TopBar />
+        {/* Main Content Area Wrapper */}
+        <div className="flex-1 flex flex-col h-screen overflow-hidden">
+          <TopBar />
 
-        <main className="flex-1 overflow-auto relative flex flex-col">
-          {/* Content Container - max-width constraint for readability */}
-          <div className="w-full max-w-[1200px] mx-auto p-6 md:p-8 lg:p-12 min-h-full">
-            {children}
+          <main className="flex-1 overflow-auto relative flex flex-col">
+            {/* Content Container - max-width constraint for readability */}
+            <div className="w-full max-w-[1200px] mx-auto p-6 md:p-8 lg:p-12 min-h-full">
+              {children}
 
-            {/* Simple Footer inside content area */}
-            <footer className="mt-auto pt-12 pb-6 text-center text-xs text-gray-400">
-              <p>© {new Date().getFullYear()} ZollPilot - Keine Rechtsberatung</p>
-            </footer>
-          </div>
-        </main>
+              {/* Simple Footer inside content area */}
+              <footer className="mt-auto pt-12 pb-6 text-center text-xs text-gray-400">
+                <p>© {new Date().getFullYear()} ZollPilot - Keine Rechtsberatung</p>
+              </footer>
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

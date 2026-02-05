@@ -154,10 +154,13 @@ model Case {
   version             Int         @default(1)
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
-  submitted_at        DateTime?
+  prepared_at         DateTime?   // Zeitpunkt der Vorbereitung (ersetzt submitted_at)
+  completed_at        DateTime?   // Zeitpunkt der Zollanmeldung
   archived_at         DateTime?
   procedure_id        String?
   procedure_version   String?
+  // DEPRECATED: submitted_at (Alias für prepared_at, wird für Migration beibehalten)
+  submitted_at        DateTime?
 
   tenant          Tenant          @relation(fields: [tenant_id], references: [id])
   created_by      User            @relation(fields: [created_by_user_id], references: [id])
@@ -206,8 +209,10 @@ model CaseField {
 enum CaseStatus {
   DRAFT       // Fall angelegt, kein Verfahren gestartet
   IN_PROCESS  // Verfahren gewählt, Bearbeitung läuft
-  SUBMITTED   // Anmeldung abgegeben
-  ARCHIVED    // Fall abgeschlossen / abgelegt
+  PREPARED    // Vorbereitung abgeschlossen, bereit für Zollanmeldung
+  COMPLETED   // Zollanmeldung beim Zoll eingereicht
+  ARCHIVED    // Fall abgelegt
+  // DEPRECATED: SUBMITTED (migriert zu PREPARED)
 }
 
 model CaseSnapshot {
