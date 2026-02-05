@@ -160,17 +160,113 @@ UPDATE cases SET status = 'PREPARED' WHERE status = 'SUBMITTED';
 
 ---
 
-## Offene Punkte (Backend)
+## Backend-Implementierung (2026-02-05)
 
-1. **API-Endpunkte implementieren**:
-   - `POST /cases/:id/reopen` – PREPARED → IN_PROCESS
-   - `POST /cases/:id/complete` – PREPARED → COMPLETED
-   - `POST /cases` mit `procedure_code` Parameter
+### API-Endpunkte
 
-2. **Datenbank-Migration**:
-   - Status-Enum erweitern: PREPARED, COMPLETED
+Alle Endpunkte sind implementiert in:
+- `apps/api/app/routes/cases.py`
+- `apps/api/app/routes/lifecycle.py`
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/cases` | POST | Case erstellen, optional mit `procedure_code` für Auto-Binding |
+| `/cases/:id/submit` | POST | Vorbereitung abschließen (→ PREPARED) |
+| `/cases/:id/reopen` | POST | Fall wieder öffnen (PREPARED → IN_PROCESS) |
+| `/cases/:id/complete` | POST | Als erledigt markieren (PREPARED → COMPLETED) |
+| `/cases/:id/archive` | POST | Fall archivieren (COMPLETED → ARCHIVED) |
+
+### Domain-Logik
+
+`apps/api/app/domain/case_status.py`:
+
+```python
+# Status-Enum
+class CaseStatus(str, Enum):
+    DRAFT = "DRAFT"
+    IN_PROCESS = "IN_PROCESS"
+    PREPARED = "PREPARED"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
+    SUBMITTED = "SUBMITTED"  # Deprecated, alias for PREPARED
+
+# Erlaubte Übergänge
+ALLOWED_TRANSITIONS = {
+    (DRAFT, IN_PROCESS),       # Verfahren binden
+    (IN_PROCESS, PREPARED),    # Vorbereitung abschließen
+    (PREPARED, COMPLETED),     # Als erledigt markieren
+    (COMPLETED, ARCHIVED),     # Archivieren
+    (PREPARED, IN_PROCESS),    # Reopen (Daten korrigieren)
+}
+
+# Hilfsfunktionen
+can_edit_fields(status)    # True für DRAFT, IN_PROCESS
+is_readonly(status)        # True für PREPARED, COMPLETED, ARCHIVED
+can_submit(status)         # True für IN_PROCESS
+can_reopen(status)         # True für PREPARED, SUBMITTED
+can_complete(status)       # True für PREPARED, SUBMITTED
+```
+
+### Concurrency-Schutz
+
+Alle Status-Transitionen verwenden optimistisches Locking mit `update_many` und WHERE-Bedingung:
+
+```python
+# Beispiel: Reopen
+update_result = await prisma.case.update_many(
+    where={
+        "id": case_id,
+        "status": {"in": ["PREPARED", "SUBMITTED"]},
+    },
+    data={"status": "IN_PROCESS"},
+)
+
+if update_result.count == 0:
+    raise HTTPException(409, "CONCURRENT_MODIFICATION")
+```
+
+### Datenbank-Schema
+
+`prisma/schema.prisma`:
+
+```prisma
+enum CaseStatus {
+  DRAFT
+  IN_PROCESS
+  PREPARED
+  COMPLETED
+  ARCHIVED
+  // DEPRECATED: SUBMITTED (migriert zu PREPARED)
+}
+
+model Case {
+  ...
+  prepared_at   DateTime?   // Zeitpunkt der Vorbereitung
+  completed_at  DateTime?   // Zeitpunkt der Zollanmeldung
+  submitted_at  DateTime?   // DEPRECATED, use prepared_at
+  ...
+}
+```
+
+### Tests
+
+`apps/api/tests/test_case_status.py`:
+- Status-Transition-Tests
+- Editierbarkeits-Tests
+- Permissions-Tests (can_submit, can_reopen, can_complete)
+- Wizard-Access-Tests
+
+---
+
+## Offene Punkte
+
+1. **Datenbank-Migration** (ausstehend):
    - Bestehende SUBMITTED → PREPARED migrieren
+   - `prisma migrate dev` ausführen
 
-3. **Validierung**:
-   - Status-Transitionen serverseitig validieren
-   - Nur erlaubte Übergänge zulassen
+**SQL-Migration:**
+```sql
+-- Migration: SUBMITTED -> PREPARED
+UPDATE "Case" SET status = 'PREPARED', prepared_at = submitted_at
+WHERE status = 'SUBMITTED';
+```
