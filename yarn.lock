@@ -3237,12 +3237,14 @@ yaml@^2.0.0, yaml@^2.4.2:
 "zollpilot-web@file:/home/user/zollpilotNeu/apps/web":
   resolved "file:apps/web"
   dependencies:
+    "@tinymce/tinymce-react" "^6.3.0"
     gray-matter "4.0.3"
     lucide-react "^0.563.0"
     next "14.2.22"
     next-mdx-remote "5.0.0"
     react "18.3.1"
     react-dom "18.3.1"
+    tinymce "^8.3.2"
 
 zwitch@^2.0.0:
   version "2.0.4"
