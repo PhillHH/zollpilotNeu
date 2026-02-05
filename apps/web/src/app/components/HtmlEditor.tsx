@@ -20,12 +20,12 @@ export function HtmlEditor({
 
   return (
     <Editor
+      licenseKey="gpl"
       tinymceScriptSrc="/tinymce/tinymce.min.js"
       onInit={(_evt, editor) => (editorRef.current = editor)}
       value={value}
       onEditorChange={(newValue) => onChange(newValue)}
       init={{
-        license_key: "gpl",
         height,
         menubar: true,
         plugins: [
