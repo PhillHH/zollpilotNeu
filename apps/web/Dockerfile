@@ -10,8 +10,9 @@ FROM node:22-slim AS deps
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and scripts needed for postinstall
 COPY package.json package-lock.json* ./
+COPY scripts ./scripts
 
 # Install dependencies (use npm install if no lockfile, otherwise npm ci)
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
