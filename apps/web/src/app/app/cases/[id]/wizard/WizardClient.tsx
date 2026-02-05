@@ -212,7 +212,7 @@ export function WizardClient({ caseId }: WizardClientProps) {
       }
     } catch (err) {
       const apiErr = err as ApiError;
-      setError(getErrorMessage(apiErr));
+      setError(getErrorMessage(apiErr.code));
     } finally {
       setLoading(false);
     }
@@ -309,13 +309,13 @@ export function WizardClient({ caseId }: WizardClientProps) {
       const apiErr = err as ApiError;
 
       if (apiErr.code === "CASE_INVALID") {
-        setError(getErrorMessage(apiErr));
+        setError(getErrorMessage(apiErr.code));
         toast.warning("Bitte korrigieren Sie die markierten Fehler.");
         await runValidation();
       } else if (isConcurrentModificationError(err)) {
-        toast.error(getErrorMessage(apiErr), { action: createReloadAction() });
+        toast.error(getErrorMessage(apiErr.code), { action: createReloadAction() });
       } else {
-        toast.error(getErrorMessage(apiErr));
+        toast.error(getErrorMessage(apiErr.code));
       }
       setIsSubmitting(false);
     }
