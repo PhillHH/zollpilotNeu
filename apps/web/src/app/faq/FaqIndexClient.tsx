@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { FaqCategory, FaqEntryItem } from "../lib/api/client";
 import { Section } from "../design-system/primitives/Section";
 import { Card } from "../design-system/primitives/Card";
+import { SafeHtmlContent } from "../components/SafeHtmlContent";
 
 type FaqIndexClientProps = {
   categories: FaqCategory[];
@@ -33,7 +34,7 @@ function FaqAccordionItem({ entry }: FaqAccordionItemProps) {
 
       {isOpen && (
         <div className="faq-answer">
-          <div className="faq-answer-content">{entry.answer}</div>
+          <SafeHtmlContent html={entry.answer} className="faq-answer-content" />
           {entry.related_blog_slug && (
             <Link
               href={`/blog/${entry.related_blog_slug}`}

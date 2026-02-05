@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { content, BlogPostDetail } from "../../lib/api/client";
 import { PublicLayout } from "../../components/PublicLayout";
 import { BlogPostClient } from "./BlogPostClient";
-import { SafeMarkdownContent } from "../../components/SafeMarkdownContent";
+import { SafeHtmlContent } from "../../components/SafeHtmlContent";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -56,7 +56,7 @@ export default async function BlogPostPage({ params }: Props) {
   return (
     <PublicLayout>
       <BlogPostClient post={post}>
-        <SafeMarkdownContent source={post.content} />
+        <SafeHtmlContent html={post.content} />
       </BlogPostClient>
     </PublicLayout>
   );
